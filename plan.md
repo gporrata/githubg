@@ -60,7 +60,7 @@ Once done remove plan.md. Reedit about.md so that its clear and understandable. 
   On startup, shell out to `gh auth token` (or equivalent) to obtain the
   token; fail with a clear error message if `gh` isn't installed/authed.
 
-- [ ] `feat: add graphql client for github api access`
+- [x] `feat: add graphql client for github api access`
   Wire up an authenticated GraphQL client (e.g. `@octokit/graphql`) using
   the resolved token; add a typed query module for PR + reviews + comments
   + check status.
