@@ -56,7 +56,7 @@ Once done remove plan.md. Reedit about.md so that its clear and understandable. 
   showing the current open PR count (placeholder count until data layer
   exists).
 
-- [ ] `feat: resolve github token from local gh CLI session`
+- [x] `feat: resolve github token from local gh CLI session`
   On startup, shell out to `gh auth token` (or equivalent) to obtain the
   token; fail with a clear error message if `gh` isn't installed/authed.
 

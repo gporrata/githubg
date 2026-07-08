@@ -1,7 +1,8 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, dialog } from 'electron';
 import { execFile } from 'node:child_process';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import { GithubAuthError, initializeGithubAuth } from './githubAuth';
 
 const execFileAsync = promisify(execFile);
 const appProcessName = 'githubg';
@@ -99,16 +100,28 @@ const setOpenPullRequestBadge = (count: number): void => {
   app.setBadgeCount(count);
 };
 
-void killExistingGithubgProcesses().then(() => app.whenReady()).then(() => {
-  setOpenPullRequestBadge(placeholderOpenPullRequestCount);
-  createWindow();
+void killExistingGithubgProcesses()
+  .then(() => initializeGithubAuth())
+  .then(() => app.whenReady())
+  .then(() => {
+    setOpenPullRequestBadge(placeholderOpenPullRequestCount);
+    createWindow();
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) {
+        createWindow();
+      }
+    });
+  })
+  .catch((error: unknown) => {
+    const message =
+      error instanceof GithubAuthError
+        ? error.message
+        : 'githubg could not start because an unexpected startup error occurred.';
+
+    dialog.showErrorBox('githubg startup failed', message);
+    app.quit();
   });
-});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
