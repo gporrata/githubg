@@ -1,9 +1,12 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { PullRequestSummary } from '../shared/pullRequest';
-import type { MergeMethod, TeamMember } from '../shared/settings';
+import type { GithubgSettings, MergeMethod, TeamMember, ThemeId } from '../shared/settings';
 
 contextBridge.exposeInMainWorld('githubg', {
   appName: 'githubg',
+  getSettings: (): Promise<GithubgSettings> => ipcRenderer.invoke('settings:get'),
+  setTheme: (theme: ThemeId): Promise<GithubgSettings> =>
+    ipcRenderer.invoke('settings:set-theme', theme),
   listOpenPullRequests: (): Promise<PullRequestSummary[]> =>
     ipcRenderer.invoke('pull-requests:list-open'),
   listReviewPullRequests: (): Promise<PullRequestSummary[]> =>

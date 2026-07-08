@@ -1,6 +1,6 @@
 import { ipcMain } from 'electron';
-import type { MergeMethod, TeamMember } from '../shared/settings';
-import { mergeMethods } from '../shared/settings';
+import type { GithubgSettings, MergeMethod, TeamMember, ThemeId } from '../shared/settings';
+import { mergeMethods, themeOptions } from '../shared/settings';
 import { fetchKnownUsers } from './github/knownUsers';
 import { mergePullRequest } from './github/mergePullRequest';
 import {
@@ -12,7 +12,25 @@ import { getAppStore } from './store';
 const isMergeMethod = (value: unknown): value is MergeMethod =>
   typeof value === 'string' && mergeMethods.includes(value as MergeMethod);
 
+const isThemeId = (value: unknown): value is ThemeId =>
+  typeof value === 'string' && themeOptions.includes(value as ThemeId);
+
 export const registerIpcHandlers = (): void => {
+  ipcMain.handle('settings:get', (): GithubgSettings => {
+    return getAppStore().get('settings');
+  });
+
+  ipcMain.handle('settings:set-theme', (_event, theme: ThemeId): GithubgSettings => {
+    if (!isThemeId(theme)) {
+      throw new Error(`Invalid theme: ${String(theme)}`);
+    }
+
+    const store = getAppStore();
+    const settings = { ...store.get('settings'), theme };
+    store.set('settings', settings);
+    return settings;
+  });
+
   ipcMain.handle('known-users:list', () => fetchKnownUsers());
 
   ipcMain.handle('team-members:list', (): TeamMember[] => {

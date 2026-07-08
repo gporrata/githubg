@@ -1,7 +1,8 @@
 import { Plus, Settings } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { PullRequestSummary } from '../../shared/pullRequest';
-import type { TeamMember } from '../../shared/settings';
+import type { TeamMember, ThemeId } from '../../shared/settings';
+import { themeOptions } from '../../shared/settings';
 import { PullRequestCard } from './components/PullRequestCard';
 
 type TabId = 'open-prs' | 'reviews';
@@ -21,8 +22,14 @@ export const App = (): JSX.Element => {
   const [knownUsers, setKnownUsers] = useState<TeamMember[]>([]);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
   const [selectedLogin, setSelectedLogin] = useState('');
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [theme, setTheme] = useState<ThemeId>('system');
   const activePullRequests = activeTab === 'open-prs' ? openPullRequests : reviewPullRequests;
   const selectedKnownUser = knownUsers.find((user) => user.login === selectedLogin);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+  }, [theme]);
 
   useEffect(() => {
     let isCurrent = true;
@@ -32,12 +39,14 @@ export const App = (): JSX.Element => {
       setLoadError(null);
 
       try {
-        const [openPrs, reviewPrs] = await Promise.all([
+        const [settings, openPrs, reviewPrs] = await Promise.all([
+          window.githubg.getSettings(),
           window.githubg.listOpenPullRequests(),
           window.githubg.listReviewPullRequests(),
         ]);
 
         if (isCurrent) {
+          setTheme(settings.theme);
           setOpenPullRequests(openPrs);
           setReviewPullRequests(reviewPrs);
         }
@@ -96,6 +105,12 @@ export const App = (): JSX.Element => {
 
   const handleRemoveTeamMember = async (login: string): Promise<void> => {
     setTeamMembers(await window.githubg.removeTeamMember(login));
+  };
+
+  const handleThemeChange = async (nextTheme: ThemeId): Promise<void> => {
+    setTheme(nextTheme);
+    const settings = await window.githubg.setTheme(nextTheme);
+    setTheme(settings.theme);
   };
 
   return (
@@ -159,7 +174,13 @@ export const App = (): JSX.Element => {
         >
           <Plus size={18} strokeWidth={2.2} />
         </button>
-        <button type="button" className="icon-button" title="Settings" aria-label="Settings">
+        <button
+          type="button"
+          className="icon-button"
+          title="Settings"
+          aria-label="Settings"
+          onClick={() => setIsSettingsModalOpen(true)}
+        >
           <Settings size={18} strokeWidth={2.2} />
         </button>
       </footer>
@@ -203,6 +224,37 @@ export const App = (): JSX.Element => {
               ))}
               {teamMembers.length === 0 ? <div className="empty-member-list">No members selected.</div> : null}
             </div>
+          </section>
+        </div>
+      ) : null}
+
+      {isSettingsModalOpen ? (
+        <div className="modal-backdrop" role="presentation">
+          <section className="modal modal--compact" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+            <header className="modal-header">
+              <h2 id="settings-title">Settings</h2>
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => setIsSettingsModalOpen(false)}
+              >
+                Close
+              </button>
+            </header>
+
+            <label className="settings-field">
+              <span>Theme</span>
+              <select
+                value={theme}
+                onChange={(event) => void handleThemeChange(event.target.value as ThemeId)}
+              >
+                {themeOptions.map((option) => (
+                  <option key={option} value={option}>
+                    {option.replaceAll('-', ' ')}
+                  </option>
+                ))}
+              </select>
+            </label>
           </section>
         </div>
       ) : null}

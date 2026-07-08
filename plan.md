@@ -101,7 +101,7 @@ Once done remove plan.md. Reedit about.md so that its clear and understandable. 
   '+' button opens a modal to add/remove team members via a dropdown of
   known GitHub users from accessible repos; persists to local store.
 
-- [ ] `feat: add settings modal with theme selection`
+- [x] `feat: add settings modal with theme selection`
   Gear icon opens a modal with a dropdown of common predefined themes;
   selecting a theme instantly applies it and persists the choice.
 

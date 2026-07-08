@@ -1,10 +1,12 @@
-import type { MergeMethod, TeamMember } from '../../shared/settings';
+import type { GithubgSettings, MergeMethod, TeamMember, ThemeId } from '../../shared/settings';
 import type { PullRequestSummary } from '../../shared/pullRequest';
 
 declare global {
   interface Window {
     githubg: {
       appName: string;
+      getSettings: () => Promise<GithubgSettings>;
+      setTheme: (theme: ThemeId) => Promise<GithubgSettings>;
       listOpenPullRequests: () => Promise<PullRequestSummary[]>;
       listReviewPullRequests: () => Promise<PullRequestSummary[]>;
       listKnownUsers: () => Promise<TeamMember[]>;
