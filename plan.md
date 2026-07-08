@@ -2,14 +2,14 @@
 
 ## Runner Prompt
 
-> Implement githubg following `plan.md` one commit at a time, in order. For each
-> unchecked item under "Commits": implement only the scope described, run
-> lint/typecheck/build (and tests if present), then create a git commit using
-> the exact semantic message shown (append detail after the colon only if
-> useful). Check the box off in `plan.md` in the same commit. Stop after each
-> commit and report status before starting the next one. Do not combine
-> commits or jump ahead. If a step reveals that a later step's plan is wrong,
-> pause and ask before deviating.
+Implement githubg following `plan.md` one commit at a time, in order. For each
+unchecked item under "Commits": implement only the scope described, run
+lint/typecheck/build (and tests if present), then create a git commit using
+the exact semantic message shown (append detail after the colon only if
+useful). Check the box off in `plan.md` in the same commit. Push the commit. Do not combine
+commits. The continue to the next. Repeat until all commits are done.
+
+Once done remove plan.md. Reedit about.md so that its clear and understandable. commit + push.
 
 ## Architecture Decisions
 
@@ -42,7 +42,7 @@
 
 ## Commits
 
-- [ ] `chore: scaffold electron + react + typescript app`
+- [x] `chore: scaffold electron + react + typescript app`
   Set up project skeleton (electron-vite or electron-forge with a
   vite-react-ts template), base tsconfig, eslint/prettier, npm scripts for
   dev/build/lint.
