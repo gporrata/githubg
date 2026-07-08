@@ -259,8 +259,12 @@ h2 {
   border-left-color: #c83f49;
 }
 
-.pr-card--merged {
+.pr-card--mergeable {
   border-left-color: #2f8d63;
+}
+
+.pr-card--merged {
+  border-left-color: #60a5fa;
 }
 
 @keyframes pr-action-border-pulse {

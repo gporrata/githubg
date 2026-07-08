@@ -24,6 +24,10 @@ const getCardTone = (pullRequest: PullRequestSummary): string => {
     return 'changes-requested';
   }
 
+  if (pullRequest.canBeMerged) {
+    return 'mergeable';
+  }
+
   return 'quiet';
 };
 
@@ -80,6 +84,7 @@ export const PullRequestCard = ({ pullRequest }: PullRequestCardProps): JSX.Elem
   const createdAt = useMemo(() => formatDate(pullRequest.createdAt), [pullRequest.createdAt]);
   const mergeLabel = hasLocalMergedActiveActions ? 'Actions running' : getMergeLabel(pullRequest);
   const canMerge = pullRequest.canBeMerged && !isMerging && !hasLocalMergedActiveActions;
+  const showMergeControls = pullRequest.canBeMerged || hasLocalMergedActiveActions || isMerging;
   const requestedChangeReviewers = pullRequest.requestedChangeReviewers;
   const canRequestReview = requestedChangeReviewers.length > 0 && !isRequestingReview;
   const hasRunningAction =
@@ -227,22 +232,26 @@ export const PullRequestCard = ({ pullRequest }: PullRequestCardProps): JSX.Elem
                 {isRequestingReview ? 'Requesting' : 'Request re-review'}
               </button>
             ) : null}
-            <label>
-              <span>Method</span>
-              <select
-                value={mergeMethod}
-                onChange={(event) => handleMergeMethodChange(event.target.value as MergeMethod)}
-              >
-                {mergeMethods.map((method) => (
-                  <option key={method} value={method}>
-                    {method.toLowerCase()}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <button type="button" className="merge-button" disabled={!canMerge} onClick={handleMerge}>
-              {isMerging ? 'Merging' : 'Merge'}
-            </button>
+            {showMergeControls ? (
+              <>
+                <label>
+                  <span>Method</span>
+                  <select
+                    value={mergeMethod}
+                    onChange={(event) => handleMergeMethodChange(event.target.value as MergeMethod)}
+                  >
+                    {mergeMethods.map((method) => (
+                      <option key={method} value={method}>
+                        {method.toLowerCase()}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button type="button" className="merge-button" disabled={!canMerge} onClick={handleMerge}>
+                  {isMerging ? 'Merging' : 'Merge'}
+                </button>
+              </>
+            ) : null}
             {mergeError ? <p className="merge-error">{mergeError}</p> : null}
             {reviewRequestError ? <p className="merge-error">{reviewRequestError}</p> : null}
           </div>
