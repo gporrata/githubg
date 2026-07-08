@@ -51,7 +51,7 @@ Once done remove plan.md. Reedit about.md so that its clear and understandable. 
   On app launch, detect an existing githubg process and kill it before
   continuing startup.
 
-- [ ] `feat: add bundled app icon and dock/tray badge count`
+- [x] `feat: add bundled app icon and dock/tray badge count`
   Download and bundle the linked PNG as the app icon; wire up a badge
   showing the current open PR count (placeholder count until data layer
   exists).

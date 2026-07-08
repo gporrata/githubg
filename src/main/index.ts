@@ -5,6 +5,9 @@ import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
 const appProcessName = 'githubg';
+const placeholderOpenPullRequestCount = 0;
+
+const getIconPath = (): string => join(app.getAppPath(), 'resources/icon.png');
 
 const parsePids = (raw: string): number[] =>
   raw
@@ -69,6 +72,7 @@ const createWindow = (): void => {
     minWidth: 960,
     minHeight: 640,
     title: 'githubg',
+    icon: getIconPath(),
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -83,7 +87,20 @@ const createWindow = (): void => {
   }
 };
 
+const setOpenPullRequestBadge = (count: number): void => {
+  const badge = count > 0 ? String(count) : '';
+
+  if (process.platform === 'darwin') {
+    app.dock.setIcon(getIconPath());
+    app.dock.setBadge(badge);
+    return;
+  }
+
+  app.setBadgeCount(count);
+};
+
 void killExistingGithubgProcesses().then(() => app.whenReady()).then(() => {
+  setOpenPullRequestBadge(placeholderOpenPullRequestCount);
   createWindow();
 
   app.on('activate', () => {
