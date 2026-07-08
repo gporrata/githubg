@@ -74,7 +74,7 @@ Once done remove plan.md. Reedit about.md so that its clear and understandable. 
   Set up `electron-store` (or SQLite) with schemas for team members,
   settings (theme), and merged-PR tracking state.
 
-- [ ] `feat: build main window shell with tabs and footer`
+- [x] `feat: build main window shell with tabs and footer`
   Main window layout: Open PRs / Reviews tabs, footer with '+' button
   (left) and gear icon (right aligned).
 
