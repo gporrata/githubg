@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "Desktop app for tracking GitHub pull requests.",
   "main": "./out/main/index.js",
+  "bin": {
+    "githubg": "./githubg"
+  },
   "author": "githubg",
   "license": "UNLICENSED",
   "private": true,

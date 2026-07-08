@@ -1,0 +1,34 @@
+#!/usr/bin/env node
+
+const { spawn, spawnSync } = require("node:child_process");
+const { dirname } = require("node:path");
+
+const [command] = process.argv.slice(2);
+const npm = process.platform === "win32" ? "npm.cmd" : "npm";
+const appRoot = dirname(__filename);
+
+function brandDevelopmentElectronApp() {
+  if (process.platform !== "darwin") {
+    return;
+  }
+
+  const plist = `${appRoot}/node_modules/electron/dist/Electron.app/Contents/Info.plist`;
+  spawnSync("plutil", ["-replace", "CFBundleName", "-string", "githubg", plist]);
+  spawnSync("plutil", ["-replace", "CFBundleDisplayName", "-string", "githubg", plist]);
+}
+
+if (!command) {
+  brandDevelopmentElectronApp();
+  const child = spawn(npm, ["run", "dev"], {
+    cwd: appRoot,
+    detached: true,
+    stdio: "ignore",
+  });
+  child.unref();
+  console.log("githubg started");
+  process.exit(0);
+}
+
+console.error(`Unknown command: ${command}`);
+console.error("Usage: githubg");
+process.exit(1);
