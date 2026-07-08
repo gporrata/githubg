@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron';
-import type { MergeMethod } from '../shared/settings';
+import type { MergeMethod, TeamMember } from '../shared/settings';
 import { mergeMethods } from '../shared/settings';
+import { fetchKnownUsers } from './github/knownUsers';
 import { mergePullRequest } from './github/mergePullRequest';
 import {
   fetchOpenPullRequestsForTeamMembers,
@@ -12,6 +13,36 @@ const isMergeMethod = (value: unknown): value is MergeMethod =>
   typeof value === 'string' && mergeMethods.includes(value as MergeMethod);
 
 export const registerIpcHandlers = (): void => {
+  ipcMain.handle('known-users:list', () => fetchKnownUsers());
+
+  ipcMain.handle('team-members:list', (): TeamMember[] => {
+    return getAppStore().get('teamMembers', []);
+  });
+
+  ipcMain.handle('team-members:add', (_event, member: TeamMember): TeamMember[] => {
+    const store = getAppStore();
+    const teamMembers = store.get('teamMembers', []);
+
+    if (!teamMembers.some((teamMember) => teamMember.login === member.login)) {
+      store.set(
+        'teamMembers',
+        [...teamMembers, member].sort((left, right) => left.login.localeCompare(right.login)),
+      );
+    }
+
+    return store.get('teamMembers', []);
+  });
+
+  ipcMain.handle('team-members:remove', (_event, login: string): TeamMember[] => {
+    const store = getAppStore();
+    const teamMembers = store.get('teamMembers', []);
+    store.set(
+      'teamMembers',
+      teamMembers.filter((member) => member.login !== login),
+    );
+    return store.get('teamMembers', []);
+  });
+
   ipcMain.handle('pull-requests:list-open', () => fetchOpenPullRequestsForViewer());
   ipcMain.handle('pull-requests:list-reviews', () => fetchOpenPullRequestsForTeamMembers());
 

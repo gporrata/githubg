@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { PullRequestSummary } from '../shared/pullRequest';
-import type { MergeMethod } from '../shared/settings';
+import type { MergeMethod, TeamMember } from '../shared/settings';
 
 contextBridge.exposeInMainWorld('githubg', {
   appName: 'githubg',
@@ -8,6 +8,12 @@ contextBridge.exposeInMainWorld('githubg', {
     ipcRenderer.invoke('pull-requests:list-open'),
   listReviewPullRequests: (): Promise<PullRequestSummary[]> =>
     ipcRenderer.invoke('pull-requests:list-reviews'),
+  listKnownUsers: (): Promise<TeamMember[]> => ipcRenderer.invoke('known-users:list'),
+  listTeamMembers: (): Promise<TeamMember[]> => ipcRenderer.invoke('team-members:list'),
+  addTeamMember: (member: TeamMember): Promise<TeamMember[]> =>
+    ipcRenderer.invoke('team-members:add', member),
+  removeTeamMember: (login: string): Promise<TeamMember[]> =>
+    ipcRenderer.invoke('team-members:remove', login),
   getMergeMethod: (pullRequestId: string): Promise<MergeMethod> =>
     ipcRenderer.invoke('merge-method:get', pullRequestId),
   setMergeMethod: (pullRequestId: string, mergeMethod: MergeMethod): Promise<MergeMethod> =>

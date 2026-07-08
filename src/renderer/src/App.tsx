@@ -1,6 +1,7 @@
 import { Plus, Settings } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import type { PullRequestSummary } from '../../shared/pullRequest';
+import type { TeamMember } from '../../shared/settings';
 import { PullRequestCard } from './components/PullRequestCard';
 
 type TabId = 'open-prs' | 'reviews';
@@ -16,7 +17,12 @@ export const App = (): JSX.Element => {
   const [reviewPullRequests, setReviewPullRequests] = useState<PullRequestSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
+  const [knownUsers, setKnownUsers] = useState<TeamMember[]>([]);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [selectedLogin, setSelectedLogin] = useState('');
   const activePullRequests = activeTab === 'open-prs' ? openPullRequests : reviewPullRequests;
+  const selectedKnownUser = knownUsers.find((user) => user.login === selectedLogin);
 
   useEffect(() => {
     let isCurrent = true;
@@ -52,6 +58,45 @@ export const App = (): JSX.Element => {
       isCurrent = false;
     };
   }, []);
+
+  useEffect(() => {
+    if (!isTeamModalOpen) {
+      return;
+    }
+
+    let isCurrent = true;
+
+    const loadTeamData = async (): Promise<void> => {
+      const [users, members] = await Promise.all([
+        window.githubg.listKnownUsers(),
+        window.githubg.listTeamMembers(),
+      ]);
+
+      if (isCurrent) {
+        setKnownUsers(users);
+        setTeamMembers(members);
+        setSelectedLogin(users[0]?.login ?? '');
+      }
+    };
+
+    void loadTeamData();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [isTeamModalOpen]);
+
+  const handleAddTeamMember = async (): Promise<void> => {
+    if (!selectedKnownUser) {
+      return;
+    }
+
+    setTeamMembers(await window.githubg.addTeamMember(selectedKnownUser));
+  };
+
+  const handleRemoveTeamMember = async (login: string): Promise<void> => {
+    setTeamMembers(await window.githubg.removeTeamMember(login));
+  };
 
   return (
     <div className="app-shell">
@@ -105,13 +150,62 @@ export const App = (): JSX.Element => {
       </main>
 
       <footer className="footer-bar">
-        <button type="button" className="icon-button" title="Team members" aria-label="Team members">
+        <button
+          type="button"
+          className="icon-button"
+          title="Team members"
+          aria-label="Team members"
+          onClick={() => setIsTeamModalOpen(true)}
+        >
           <Plus size={18} strokeWidth={2.2} />
         </button>
         <button type="button" className="icon-button" title="Settings" aria-label="Settings">
           <Settings size={18} strokeWidth={2.2} />
         </button>
       </footer>
+
+      {isTeamModalOpen ? (
+        <div className="modal-backdrop" role="presentation">
+          <section className="modal" role="dialog" aria-modal="true" aria-labelledby="team-title">
+            <header className="modal-header">
+              <h2 id="team-title">Team members</h2>
+              <button type="button" className="text-button" onClick={() => setIsTeamModalOpen(false)}>
+                Close
+              </button>
+            </header>
+
+            <div className="team-picker">
+              <select value={selectedLogin} onChange={(event) => setSelectedLogin(event.target.value)}>
+                {knownUsers.map((user) => (
+                  <option key={user.login} value={user.login}>
+                    {user.login}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="primary-button"
+                disabled={!selectedKnownUser}
+                onClick={handleAddTeamMember}
+              >
+                Add
+              </button>
+            </div>
+
+            <div className="member-list">
+              {teamMembers.map((member) => (
+                <div className="member-row" key={member.login}>
+                  <span>{member.login}</span>
+                  <button type="button" onClick={() => void handleRemoveTeamMember(member.login)}>
+                    Remove
+                  </button>
+                </div>
+              ))}
+              {teamMembers.length === 0 ? <div className="empty-member-list">No members selected.</div> : null}
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 };

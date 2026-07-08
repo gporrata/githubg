@@ -97,7 +97,7 @@ Once done remove plan.md. Reedit about.md so that its clear and understandable. 
   Fetch and render all open PRs authored by configured team members,
   reusing the PR card component.
 
-- [ ] `feat: add designate team members modal`
+- [x] `feat: add designate team members modal`
   '+' button opens a modal to add/remove team members via a dropdown of
   known GitHub users from accessible repos; persists to local store.
 
