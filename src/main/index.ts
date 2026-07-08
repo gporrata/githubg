@@ -1,70 +1,15 @@
 import { app, BrowserWindow, dialog, shell } from 'electron';
-import { execFile } from 'node:child_process';
 import { join } from 'node:path';
-import { promisify } from 'node:util';
 import { getIconPath, setOpenPullRequestBadge } from './badge';
 import { GithubAuthError, initializeGithubAuth } from './githubAuth';
 import { registerIpcHandlers } from './ipc';
 
-const execFileAsync = promisify(execFile);
-const appProcessName = 'githubg';
 const placeholderOpenPullRequestCount = 0;
+let mainWindow: BrowserWindow | null = null;
 
-const parsePids = (raw: string): number[] =>
-  raw
-    .split(/\s+/)
-    .map((value) => Number.parseInt(value, 10))
-    .filter((pid) => Number.isInteger(pid) && pid > 0 && pid !== process.pid);
+app.setName('githubg');
 
-const findExistingGithubgPids = async (): Promise<number[]> => {
-  try {
-    if (process.platform === 'win32') {
-      const { stdout } = await execFileAsync('powershell.exe', [
-        '-NoProfile',
-        '-Command',
-        `Get-Process -Name ${appProcessName} -ErrorAction SilentlyContinue | Where-Object { $_.Id -ne ${process.pid} } | ForEach-Object { $_.Id }`,
-      ]);
-
-      return parsePids(stdout);
-    }
-
-    const { stdout } = await execFileAsync('pgrep', ['-x', appProcessName]);
-    return parsePids(stdout);
-  } catch {
-    return [];
-  }
-};
-
-const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
-
-const isProcessAlive = (pid: number): boolean => {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch {
-    return false;
-  }
-};
-
-const killExistingGithubgProcesses = async (): Promise<void> => {
-  const pids = await findExistingGithubgPids();
-
-  if (pids.length === 0) {
-    return;
-  }
-
-  for (const pid of pids) {
-    process.kill(pid, 'SIGTERM');
-  }
-
-  await wait(350);
-
-  for (const pid of pids) {
-    if (isProcessAlive(pid)) {
-      process.kill(pid, 'SIGKILL');
-    }
-  }
-};
+const hasSingleInstanceLock = app.requestSingleInstanceLock();
 
 const openInDefaultBrowser = (url: string): boolean => {
   let protocol: string;
@@ -84,7 +29,7 @@ const openInDefaultBrowser = (url: string): boolean => {
 };
 
 const createWindow = (): void => {
-  const mainWindow = new BrowserWindow({
+  mainWindow = new BrowserWindow({
     width: 1180,
     height: 780,
     minWidth: 960,
@@ -103,7 +48,7 @@ const createWindow = (): void => {
   });
 
   mainWindow.webContents.on('will-navigate', (event, url) => {
-    if (url === mainWindow.webContents.getURL()) {
+    if (url === mainWindow?.webContents.getURL()) {
       return;
     }
 
@@ -117,31 +62,64 @@ const createWindow = (): void => {
   } else {
     void mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
   }
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
 };
 
-void killExistingGithubgProcesses()
-  .then(() => initializeGithubAuth())
-  .then(() => app.whenReady())
-  .then(() => {
-    registerIpcHandlers();
-    setOpenPullRequestBadge(placeholderOpenPullRequestCount);
-    createWindow();
+const showMainWindow = (): void => {
+  if (!mainWindow) {
+    if (app.isReady()) {
+      createWindow();
+    }
 
-    app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) {
-        createWindow();
-      }
-    });
-  })
-  .catch((error: unknown) => {
-    const message =
-      error instanceof GithubAuthError
-        ? error.message
-        : 'githubg could not start because an unexpected startup error occurred.';
+    return;
+  }
 
-    dialog.showErrorBox('githubg startup failed', message);
-    app.quit();
+  if (mainWindow.isMinimized()) {
+    mainWindow.restore();
+  }
+
+  if (!mainWindow.isVisible()) {
+    mainWindow.show();
+  }
+
+  mainWindow.focus();
+};
+
+if (!hasSingleInstanceLock) {
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    showMainWindow();
   });
+
+  void initializeGithubAuth()
+    .then(() => app.whenReady())
+    .then(() => {
+      registerIpcHandlers();
+      setOpenPullRequestBadge(placeholderOpenPullRequestCount);
+      createWindow();
+
+      app.on('activate', () => {
+        if (BrowserWindow.getAllWindows().length === 0) {
+          createWindow();
+        } else {
+          showMainWindow();
+        }
+      });
+    })
+    .catch((error: unknown) => {
+      const message =
+        error instanceof GithubAuthError
+          ? error.message
+          : 'githubg could not start because an unexpected startup error occurred.';
+
+      dialog.showErrorBox('githubg startup failed', message);
+      app.quit();
+    });
+}
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
