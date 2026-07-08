@@ -47,7 +47,7 @@ Once done remove plan.md. Reedit about.md so that its clear and understandable. 
   vite-react-ts template), base tsconfig, eslint/prettier, npm scripts for
   dev/build/lint.
 
-- [ ] `feat: enforce single running instance via kill-and-restart`
+- [x] `feat: enforce single running instance via kill-and-restart`
   On app launch, detect an existing githubg process and kill it before
   continuing startup.
 
