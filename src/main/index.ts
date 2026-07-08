@@ -3,6 +3,7 @@ import { execFile } from 'node:child_process';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
 import { GithubAuthError, initializeGithubAuth } from './githubAuth';
+import { registerIpcHandlers } from './ipc';
 
 const execFileAsync = promisify(execFile);
 const appProcessName = 'githubg';
@@ -104,6 +105,7 @@ void killExistingGithubgProcesses()
   .then(() => initializeGithubAuth())
   .then(() => app.whenReady())
   .then(() => {
+    registerIpcHandlers();
     setOpenPullRequestBadge(placeholderOpenPullRequestCount);
     createWindow();
 

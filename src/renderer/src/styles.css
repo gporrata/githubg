@@ -311,6 +311,56 @@ h3 {
   background: #fbfcfe;
 }
 
+.merge-row {
+  display: flex;
+  align-items: end;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.merge-row label {
+  display: grid;
+  gap: 4px;
+  color: #667085;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.merge-row select {
+  height: 34px;
+  min-width: 128px;
+  padding: 0 8px;
+  color: #1f2937;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  text-transform: none;
+}
+
+.merge-button {
+  height: 34px;
+  min-width: 92px;
+  padding: 0 14px;
+  color: #ffffff;
+  background: #2f7d6d;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.merge-button:disabled {
+  color: #778190;
+  background: #d8dee6;
+  cursor: not-allowed;
+}
+
+.merge-error {
+  margin: 0;
+  color: #b4232f;
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
 .footer-bar {
   display: flex;
   align-items: center;

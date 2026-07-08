@@ -191,3 +191,25 @@ export const PULL_REQUEST_SEARCH_QUERY = `
     }
   }
 `;
+
+export type MergePullRequestResponse = {
+  mergePullRequest: {
+    pullRequest: {
+      id: string;
+      state: 'MERGED';
+      mergedAt: string | null;
+    } | null;
+  } | null;
+};
+
+export const MERGE_PULL_REQUEST_MUTATION = `
+  mutation MergePullRequest($pullRequestId: ID!, $mergeMethod: PullRequestMergeMethod!) {
+    mergePullRequest(input: { pullRequestId: $pullRequestId, mergeMethod: $mergeMethod }) {
+      pullRequest {
+        id
+        state
+        mergedAt
+      }
+    }
+  }
+`;

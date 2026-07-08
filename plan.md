@@ -83,7 +83,7 @@ Once done remove plan.md. Reedit about.md so that its clear and understandable. 
   approval status, merge-in-progress state, and border color rules
   (yellow/red/green). Collapsed state adds comment threads with links.
 
-- [ ] `feat: add per-pr merge button with method selector`
+- [x] `feat: add per-pr merge button with method selector`
   Merge button on collapsed card, default squash, per-PR method override;
   disabled until required status checks pass; calls GraphQL/REST mutation
   to merge on click.
