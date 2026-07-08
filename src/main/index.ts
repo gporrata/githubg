@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog } from 'electron';
+import { app, BrowserWindow, dialog, shell } from 'electron';
 import { execFile } from 'node:child_process';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
@@ -66,6 +66,23 @@ const killExistingGithubgProcesses = async (): Promise<void> => {
   }
 };
 
+const openInDefaultBrowser = (url: string): boolean => {
+  let protocol: string;
+
+  try {
+    protocol = new URL(url).protocol;
+  } catch {
+    return false;
+  }
+
+  if (protocol !== 'http:' && protocol !== 'https:') {
+    return false;
+  }
+
+  void shell.openExternal(url);
+  return true;
+};
+
 const createWindow = (): void => {
   const mainWindow = new BrowserWindow({
     width: 1180,
@@ -79,6 +96,20 @@ const createWindow = (): void => {
       contextIsolation: true,
       nodeIntegration: false,
     },
+  });
+
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    return openInDefaultBrowser(url) ? { action: 'deny' } : { action: 'allow' };
+  });
+
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (url === mainWindow.webContents.getURL()) {
+      return;
+    }
+
+    if (openInDefaultBrowser(url)) {
+      event.preventDefault();
+    }
   });
 
   if (process.env.ELECTRON_RENDERER_URL) {
