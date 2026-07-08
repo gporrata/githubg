@@ -65,7 +65,7 @@ Once done remove plan.md. Reedit about.md so that its clear and understandable. 
   the resolved token; add a typed query module for PR + reviews + comments
   + check status.
 
-- [ ] `feat: fetch and parse open PRs across accessible repos`
+- [x] `feat: fetch and parse open PRs across accessible repos`
   Query all open PRs authored by the user across every accessible repo;
   parse ticket number from branch name via regex; sort by branch name then
   ticket number, unmatched branches last.

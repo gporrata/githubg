@@ -1,0 +1,140 @@
+import type { PullRequestSummary } from '../../shared/pullRequest';
+import { githubGraphql } from './graphqlClient';
+import {
+  PULL_REQUEST_SEARCH_QUERY,
+  VIEWER_QUERY,
+  type GithubPullRequestNode,
+  type GithubPullRequestSearchResponse,
+  type GithubViewerResponse,
+} from './pullRequestQueries';
+
+const ticketNumberPattern = /[a-z]+-\d+/i;
+
+const parseTicketNumber = (branchName: string): string | null => {
+  const match = ticketNumberPattern.exec(branchName);
+  return match ? match[0].toLowerCase() : null;
+};
+
+const compareTicketNumbers = (left: string | null, right: string | null): number => {
+  if (left === right) {
+    return 0;
+  }
+
+  if (left === null) {
+    return 1;
+  }
+
+  if (right === null) {
+    return -1;
+  }
+
+  return left.localeCompare(right, undefined, { numeric: true, sensitivity: 'base' });
+};
+
+const comparePullRequests = (left: PullRequestSummary, right: PullRequestSummary): number => {
+  if (left.ticketNumber === null && right.ticketNumber !== null) {
+    return 1;
+  }
+
+  if (left.ticketNumber !== null && right.ticketNumber === null) {
+    return -1;
+  }
+
+  const branchCompare = left.branchName.localeCompare(right.branchName, undefined, {
+    numeric: true,
+    sensitivity: 'base',
+  });
+
+  if (branchCompare !== 0) {
+    return branchCompare;
+  }
+
+  const ticketCompare = compareTicketNumbers(left.ticketNumber, right.ticketNumber);
+
+  if (ticketCompare !== 0) {
+    return ticketCompare;
+  }
+
+  return left.repositoryNameWithOwner.localeCompare(right.repositoryNameWithOwner);
+};
+
+const mapPullRequest = (node: GithubPullRequestNode): PullRequestSummary => {
+  const latestCommit = node.commits.nodes.at(0)?.commit;
+  const checksState = latestCommit?.statusCheckRollup?.state ?? null;
+  const ticketNumber = parseTicketNumber(node.headRefName);
+
+  return {
+    id: node.id,
+    databaseId: node.databaseId,
+    repositoryId: node.repository.id,
+    repositoryName: node.repository.name,
+    repositoryNameWithOwner: node.repository.nameWithOwner,
+    number: node.number,
+    title: node.title,
+    url: node.url,
+    state: node.state,
+    createdAt: node.createdAt,
+    updatedAt: node.updatedAt,
+    mergedAt: node.mergedAt,
+    authorLogin: node.author?.login ?? null,
+    branchName: node.headRefName,
+    ticketNumber,
+    commentCount: node.comments.totalCount + node.reviewThreads.totalCount,
+    reviewDecision: node.reviewDecision,
+    approved: node.reviewDecision === 'APPROVED',
+    mergeable: node.mergeable === 'MERGEABLE',
+    checksState,
+    requiredStatusChecksPassed: checksState === 'SUCCESS',
+    isDraft: node.isDraft,
+    commentThreads: node.reviewThreads.nodes
+      .filter((thread) => thread !== null)
+      .map((thread) => ({
+        id: thread.id,
+        path: thread.path,
+        line: thread.line,
+        isResolved: thread.isResolved,
+        isOutdated: thread.isOutdated,
+        comments: thread.comments.nodes
+          .filter((comment) => comment !== null)
+          .map((comment) => ({
+            id: comment.id,
+            url: comment.url,
+            bodyText: comment.bodyText,
+            createdAt: comment.createdAt,
+            authorLogin: comment.author?.login ?? null,
+          })),
+      })),
+  };
+};
+
+export const fetchViewerLogin = async (): Promise<string> => {
+  const response = await githubGraphql<GithubViewerResponse>(VIEWER_QUERY);
+  return response.viewer.login;
+};
+
+export const fetchOpenPullRequestsForViewer = async (): Promise<PullRequestSummary[]> => {
+  const viewerLogin = await fetchViewerLogin();
+  const query = `is:pr is:open archived:false author:${viewerLogin}`;
+  const pullRequests: PullRequestSummary[] = [];
+  let cursor: string | null = null;
+
+  do {
+    const response = await githubGraphql<GithubPullRequestSearchResponse>(
+      PULL_REQUEST_SEARCH_QUERY,
+      {
+        query,
+        cursor,
+      },
+    );
+
+    for (const node of response.search.nodes) {
+      if (node?.__typename === 'PullRequest') {
+        pullRequests.push(mapPullRequest(node));
+      }
+    }
+
+    cursor = response.search.pageInfo.hasNextPage ? response.search.pageInfo.endCursor : null;
+  } while (cursor);
+
+  return pullRequests.sort(comparePullRequests);
+};
