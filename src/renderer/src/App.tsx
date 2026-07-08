@@ -1,4 +1,4 @@
-import { Plus, Settings } from 'lucide-react';
+import { Plus, RefreshCw, Settings } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PullRequestSummary } from '../../shared/pullRequest';
 import type { TeamMember, ThemeId } from '../../shared/settings';
@@ -17,6 +17,7 @@ export const App = (): JSX.Element => {
   const [openPullRequests, setOpenPullRequests] = useState<PullRequestSummary[]>([]);
   const [reviewPullRequests, setReviewPullRequests] = useState<PullRequestSummary[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [knownUsers, setKnownUsers] = useState<TeamMember[]>([]);
@@ -25,15 +26,26 @@ export const App = (): JSX.Element => {
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [theme, setTheme] = useState<ThemeId>('system');
   const [pollIntervalMs, setPollIntervalMs] = useState(120_000);
+  const [currentTimeMs, setCurrentTimeMs] = useState(() => Date.now());
+  const [nextRefreshAtMs, setNextRefreshAtMs] = useState(() => Date.now() + 120_000);
   const hasLoadedPullRequests = useRef(false);
+  const refreshInFlight = useRef(false);
   const activePullRequests = activeTab === 'open-prs' ? openPullRequests : reviewPullRequests;
   const selectedKnownUser = knownUsers.find((user) => user.login === selectedLogin);
+  const nextRefreshSeconds = Math.max(0, Math.ceil((nextRefreshAtMs - currentTimeMs) / 1000));
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
   const refreshPullRequests = useCallback(async (): Promise<void> => {
+    if (refreshInFlight.current) {
+      return;
+    }
+
+    refreshInFlight.current = true;
+    setIsRefreshing(true);
+
     if (!hasLoadedPullRequests.current) {
       setIsLoading(true);
     }
@@ -53,7 +65,15 @@ export const App = (): JSX.Element => {
       setLoadError(error instanceof Error ? error.message : 'Unable to load pull requests.');
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
+      refreshInFlight.current = false;
     }
+  }, []);
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setCurrentTimeMs(Date.now()), 1000);
+
+    return () => window.clearInterval(intervalId);
   }, []);
 
   useEffect(() => {
@@ -76,9 +96,11 @@ export const App = (): JSX.Element => {
   }, []);
 
   useEffect(() => {
+    setNextRefreshAtMs(Date.now() + pollIntervalMs);
     void refreshPullRequests();
 
     const intervalId = window.setInterval(() => {
+      setNextRefreshAtMs(Date.now() + pollIntervalMs);
       void refreshPullRequests();
     }, pollIntervalMs);
 
@@ -128,6 +150,10 @@ export const App = (): JSX.Element => {
     setTheme(nextTheme);
     const settings = await window.githubg.setTheme(nextTheme);
     setTheme(settings.theme);
+  };
+
+  const handleRefresh = (): void => {
+    void refreshPullRequests();
   };
 
   return (
@@ -182,15 +208,34 @@ export const App = (): JSX.Element => {
       </main>
 
       <footer className="footer-bar">
-        <button
-          type="button"
-          className="icon-button"
-          title="Team members"
-          aria-label="Team members"
-          onClick={() => setIsTeamModalOpen(true)}
-        >
-          <Plus size={18} strokeWidth={2.2} />
-        </button>
+        <div className="footer-actions">
+          <button
+            type="button"
+            className="icon-button"
+            title="Team members"
+            aria-label="Team members"
+            onClick={() => setIsTeamModalOpen(true)}
+          >
+            <Plus size={18} strokeWidth={2.2} />
+          </button>
+          <button
+            type="button"
+            className="icon-button"
+            title="Refresh pull requests"
+            aria-label="Refresh pull requests"
+            disabled={isRefreshing}
+            onClick={handleRefresh}
+          >
+            <RefreshCw
+              className={isRefreshing ? 'refresh-icon refresh-icon--spinning' : 'refresh-icon'}
+              size={18}
+              strokeWidth={2.2}
+            />
+          </button>
+          <span className="refresh-countdown" aria-label="Seconds until next automatic refresh">
+            {nextRefreshSeconds}
+          </span>
+        </div>
         <button
           type="button"
           className="icon-button"
@@ -207,13 +252,20 @@ export const App = (): JSX.Element => {
           <section className="modal" role="dialog" aria-modal="true" aria-labelledby="team-title">
             <header className="modal-header">
               <h2 id="team-title">Team members</h2>
-              <button type="button" className="text-button" onClick={() => setIsTeamModalOpen(false)}>
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => setIsTeamModalOpen(false)}
+              >
                 Close
               </button>
             </header>
 
             <div className="team-picker">
-              <select value={selectedLogin} onChange={(event) => setSelectedLogin(event.target.value)}>
+              <select
+                value={selectedLogin}
+                onChange={(event) => setSelectedLogin(event.target.value)}
+              >
                 {knownUsers.map((user) => (
                   <option key={user.login} value={user.login}>
                     {user.login}
@@ -239,7 +291,9 @@ export const App = (): JSX.Element => {
                   </button>
                 </div>
               ))}
-              {teamMembers.length === 0 ? <div className="empty-member-list">No members selected.</div> : null}
+              {teamMembers.length === 0 ? (
+                <div className="empty-member-list">No members selected.</div>
+              ) : null}
             </div>
           </section>
         </div>
@@ -247,7 +301,12 @@ export const App = (): JSX.Element => {
 
       {isSettingsModalOpen ? (
         <div className="modal-backdrop" role="presentation">
-          <section className="modal modal--compact" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+          <section
+            className="modal modal--compact"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="settings-title"
+          >
             <header className="modal-header">
               <h2 id="settings-title">Settings</h2>
               <button
