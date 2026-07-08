@@ -1,6 +1,7 @@
 import { ipcMain } from 'electron';
 import type { GithubgSettings, MergeMethod, TeamMember, ThemeId } from '../shared/settings';
 import { mergeMethods, themeOptions } from '../shared/settings';
+import { setOpenPullRequestBadge } from './badge';
 import { fetchKnownUsers } from './github/knownUsers';
 import { mergePullRequest } from './github/mergePullRequest';
 import {
@@ -61,7 +62,11 @@ export const registerIpcHandlers = (): void => {
     return store.get('teamMembers', []);
   });
 
-  ipcMain.handle('pull-requests:list-open', () => fetchOpenPullRequestsForViewer());
+  ipcMain.handle('pull-requests:list-open', async () => {
+    const pullRequests = await fetchOpenPullRequestsForViewer();
+    setOpenPullRequestBadge(pullRequests.filter((pullRequest) => pullRequest.state === 'OPEN').length);
+    return pullRequests;
+  });
   ipcMain.handle('pull-requests:list-reviews', () => fetchOpenPullRequestsForTeamMembers());
 
   ipcMain.handle('merge-method:get', (_event, pullRequestId: string): MergeMethod => {

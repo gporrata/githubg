@@ -1,5 +1,5 @@
 import { Plus, Settings } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PullRequestSummary } from '../../shared/pullRequest';
 import type { TeamMember, ThemeId } from '../../shared/settings';
 import { themeOptions } from '../../shared/settings';
@@ -24,6 +24,8 @@ export const App = (): JSX.Element => {
   const [selectedLogin, setSelectedLogin] = useState('');
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [theme, setTheme] = useState<ThemeId>('system');
+  const [pollIntervalMs, setPollIntervalMs] = useState(120_000);
+  const hasLoadedPullRequests = useRef(false);
   const activePullRequests = activeTab === 'open-prs' ? openPullRequests : reviewPullRequests;
   const selectedKnownUser = knownUsers.find((user) => user.login === selectedLogin);
 
@@ -31,42 +33,57 @@ export const App = (): JSX.Element => {
     document.documentElement.dataset.theme = theme;
   }, [theme]);
 
+  const refreshPullRequests = useCallback(async (): Promise<void> => {
+    if (!hasLoadedPullRequests.current) {
+      setIsLoading(true);
+    }
+
+    setLoadError(null);
+
+    try {
+      const [openPrs, reviewPrs] = await Promise.all([
+        window.githubg.listOpenPullRequests(),
+        window.githubg.listReviewPullRequests(),
+      ]);
+
+      setOpenPullRequests(openPrs);
+      setReviewPullRequests(reviewPrs);
+      hasLoadedPullRequests.current = true;
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Unable to load pull requests.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     let isCurrent = true;
 
-    const loadPullRequests = async (): Promise<void> => {
-      setIsLoading(true);
-      setLoadError(null);
+    const loadSettings = async (): Promise<void> => {
+      const settings = await window.githubg.getSettings();
 
-      try {
-        const [settings, openPrs, reviewPrs] = await Promise.all([
-          window.githubg.getSettings(),
-          window.githubg.listOpenPullRequests(),
-          window.githubg.listReviewPullRequests(),
-        ]);
-
-        if (isCurrent) {
-          setTheme(settings.theme);
-          setOpenPullRequests(openPrs);
-          setReviewPullRequests(reviewPrs);
-        }
-      } catch (error) {
-        if (isCurrent) {
-          setLoadError(error instanceof Error ? error.message : 'Unable to load pull requests.');
-        }
-      } finally {
-        if (isCurrent) {
-          setIsLoading(false);
-        }
+      if (isCurrent) {
+        setTheme(settings.theme);
+        setPollIntervalMs(settings.pollIntervalMs);
       }
     };
 
-    void loadPullRequests();
+    void loadSettings();
 
     return () => {
       isCurrent = false;
     };
   }, []);
+
+  useEffect(() => {
+    void refreshPullRequests();
+
+    const intervalId = window.setInterval(() => {
+      void refreshPullRequests();
+    }, pollIntervalMs);
+
+    return () => window.clearInterval(intervalId);
+  }, [pollIntervalMs, refreshPullRequests]);
 
   useEffect(() => {
     if (!isTeamModalOpen) {

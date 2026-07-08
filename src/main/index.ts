@@ -2,14 +2,13 @@ import { app, BrowserWindow, dialog } from 'electron';
 import { execFile } from 'node:child_process';
 import { join } from 'node:path';
 import { promisify } from 'node:util';
+import { getIconPath, setOpenPullRequestBadge } from './badge';
 import { GithubAuthError, initializeGithubAuth } from './githubAuth';
 import { registerIpcHandlers } from './ipc';
 
 const execFileAsync = promisify(execFile);
 const appProcessName = 'githubg';
 const placeholderOpenPullRequestCount = 0;
-
-const getIconPath = (): string => join(app.getAppPath(), 'resources/icon.png');
 
 const parsePids = (raw: string): number[] =>
   raw
@@ -87,18 +86,6 @@ const createWindow = (): void => {
   } else {
     void mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
   }
-};
-
-const setOpenPullRequestBadge = (count: number): void => {
-  const badge = count > 0 ? String(count) : '';
-
-  if (process.platform === 'darwin') {
-    app.dock.setIcon(getIconPath());
-    app.dock.setBadge(badge);
-    return;
-  }
-
-  app.setBadgeCount(count);
 };
 
 void killExistingGithubgProcesses()

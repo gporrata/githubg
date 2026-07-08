@@ -105,7 +105,7 @@ Once done remove plan.md. Reedit about.md so that its clear and understandable. 
   Gear icon opens a modal with a dropdown of common predefined themes;
   selecting a theme instantly applies it and persists the choice.
 
-- [ ] `feat: poll github api on an interval and refresh ui`
+- [x] `feat: poll github api on an interval and refresh ui`
   Background polling loop refreshes Open PRs / Reviews data and the open
   PR badge count on a configurable interval.
 
