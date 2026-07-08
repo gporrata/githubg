@@ -185,8 +185,8 @@ const PULL_REQUEST_FIELDS = `
 `;
 
 export const PULL_REQUEST_SEARCH_QUERY = `
-  query PullRequestSearch($query: String!, $cursor: String) {
-    search(query: $query, type: ISSUE, first: 50, after: $cursor) {
+  query PullRequestSearch($searchQuery: String!, $cursor: String) {
+    search(query: $searchQuery, type: ISSUE, first: 50, after: $cursor) {
       issueCount
       pageInfo {
         hasNextPage

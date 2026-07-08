@@ -140,7 +140,7 @@ const fetchOpenPullRequestsBySearchQuery = async (query: string): Promise<PullRe
     const response = await githubGraphql<GithubPullRequestSearchResponse>(
       PULL_REQUEST_SEARCH_QUERY,
       {
-        query,
+        searchQuery: query,
         cursor,
       },
     );

@@ -6,12 +6,11 @@
   "author": "githubg",
   "license": "UNLICENSED",
   "private": true,
-  "type": "module",
   "scripts": {
-    "dev": "electron-vite dev",
+    "dev": "ELECTRON_RUN_AS_NODE= electron-vite dev",
     "build": "npm run typecheck && electron-vite build",
-    "pack": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder",
+    "pack": "npm run build && ELECTRON_RUN_AS_NODE= electron-builder --dir",
+    "dist": "npm run build && ELECTRON_RUN_AS_NODE= electron-builder",
     "lint": "eslint .",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit -p tsconfig.json"

@@ -1,4 +1,4 @@
-import Store from 'electron-store';
+import ElectronStore from 'electron-store';
 import type {
   GithubgSettings,
   MergeMethod,
@@ -18,10 +18,16 @@ const defaultSettings: GithubgSettings = {
   pollIntervalMs: 120_000,
 };
 
-let appStore: Store<AppStoreSchema> | null = null;
+const StoreConstructor = (
+  typeof ElectronStore === 'function'
+    ? ElectronStore
+    : (ElectronStore as unknown as { default: typeof ElectronStore }).default
+) as typeof ElectronStore;
 
-export const getAppStore = (): Store<AppStoreSchema> => {
-  appStore ??= new Store<AppStoreSchema>({
+let appStore: ElectronStore<AppStoreSchema> | null = null;
+
+export const getAppStore = (): ElectronStore<AppStoreSchema> => {
+  appStore ??= new StoreConstructor<AppStoreSchema>({
     name: 'githubg',
     defaults: {
       teamMembers: [],
