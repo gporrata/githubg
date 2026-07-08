@@ -1,5 +1,5 @@
 import { Plus, Settings } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { PullRequestSummary } from '../../shared/pullRequest';
 import { PullRequestCard } from './components/PullRequestCard';
 
@@ -12,9 +12,46 @@ const tabs: Array<{ id: TabId; label: string }> = [
 
 export const App = (): JSX.Element => {
   const [activeTab, setActiveTab] = useState<TabId>('open-prs');
-  const openPullRequests: PullRequestSummary[] = [];
-  const reviewPullRequests: PullRequestSummary[] = [];
+  const [openPullRequests, setOpenPullRequests] = useState<PullRequestSummary[]>([]);
+  const [reviewPullRequests, setReviewPullRequests] = useState<PullRequestSummary[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const activePullRequests = activeTab === 'open-prs' ? openPullRequests : reviewPullRequests;
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    const loadPullRequests = async (): Promise<void> => {
+      setIsLoading(true);
+      setLoadError(null);
+
+      try {
+        const [openPrs, reviewPrs] = await Promise.all([
+          window.githubg.listOpenPullRequests(),
+          window.githubg.listReviewPullRequests(),
+        ]);
+
+        if (isCurrent) {
+          setOpenPullRequests(openPrs);
+          setReviewPullRequests(reviewPrs);
+        }
+      } catch (error) {
+        if (isCurrent) {
+          setLoadError(error instanceof Error ? error.message : 'Unable to load pull requests.');
+        }
+      } finally {
+        if (isCurrent) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    void loadPullRequests();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, []);
 
   return (
     <div className="app-shell">
@@ -49,7 +86,11 @@ export const App = (): JSX.Element => {
             </h2>
             <span className="count-pill">{activePullRequests.length}</span>
           </div>
-          {activePullRequests.length > 0 ? (
+          {loadError ? (
+            <div className="empty-list empty-list--error">{loadError}</div>
+          ) : isLoading ? (
+            <div className="empty-list">Loading pull requests.</div>
+          ) : activePullRequests.length > 0 ? (
             <div className="pr-list">
               {activePullRequests.map((pullRequest) => (
                 <PullRequestCard key={pullRequest.id} pullRequest={pullRequest} />

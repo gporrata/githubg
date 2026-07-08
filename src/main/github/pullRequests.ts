@@ -10,6 +10,7 @@ import {
   type GithubViewerResponse,
 } from './pullRequestQueries';
 import { getVisibleTrackedMergedPullRequestIds } from './mergedPullRequestTracking';
+import { getAppStore } from '../store';
 
 const ticketNumberPattern = /[a-z]+-\d+/i;
 
@@ -131,9 +132,7 @@ export const fetchViewerLogin = async (): Promise<string> => {
   return response.viewer.login;
 };
 
-export const fetchOpenPullRequestsForViewer = async (): Promise<PullRequestSummary[]> => {
-  const viewerLogin = await fetchViewerLogin();
-  const query = `is:pr is:open archived:false author:${viewerLogin}`;
+const fetchOpenPullRequestsBySearchQuery = async (query: string): Promise<PullRequestSummary[]> => {
   const pullRequests: PullRequestSummary[] = [];
   let cursor: string | null = null;
 
@@ -155,8 +154,42 @@ export const fetchOpenPullRequestsForViewer = async (): Promise<PullRequestSumma
     cursor = response.search.pageInfo.hasNextPage ? response.search.pageInfo.endCursor : null;
   } while (cursor);
 
+  return pullRequests;
+};
+
+const dedupePullRequests = (pullRequests: PullRequestSummary[]): PullRequestSummary[] => {
+  const byId = new Map<string, PullRequestSummary>();
+
+  for (const pullRequest of pullRequests) {
+    byId.set(pullRequest.id, pullRequest);
+  }
+
+  return [...byId.values()];
+};
+
+export const fetchOpenPullRequestsForViewer = async (): Promise<PullRequestSummary[]> => {
+  const viewerLogin = await fetchViewerLogin();
+  const query = `is:pr is:open archived:false author:${viewerLogin}`;
+  const pullRequests = await fetchOpenPullRequestsBySearchQuery(query);
   const trackedMergedIds = await getVisibleTrackedMergedPullRequestIds();
   const trackedMergedPullRequests = await fetchPullRequestsByIds(trackedMergedIds);
 
   return [...pullRequests, ...trackedMergedPullRequests].sort(comparePullRequests);
+};
+
+export const fetchOpenPullRequestsForAuthors = async (
+  authorLogins: string[],
+): Promise<PullRequestSummary[]> => {
+  const batches = await Promise.all(
+    authorLogins.map((login) =>
+      fetchOpenPullRequestsBySearchQuery(`is:pr is:open archived:false author:${login}`),
+    ),
+  );
+
+  return dedupePullRequests(batches.flat()).sort(comparePullRequests);
+};
+
+export const fetchOpenPullRequestsForTeamMembers = async (): Promise<PullRequestSummary[]> => {
+  const teamMembers = getAppStore().get('teamMembers', []);
+  return fetchOpenPullRequestsForAuthors(teamMembers.map((member) => member.login));
 };

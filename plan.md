@@ -93,7 +93,7 @@ Once done remove plan.md. Reedit about.md so that its clear and understandable. 
   workflow runs complete, capped at the day after merge; persist merge
   timestamp in local store.
 
-- [ ] `feat: implement reviews tab`
+- [x] `feat: implement reviews tab`
   Fetch and render all open PRs authored by configured team members,
   reusing the PR card component.
 

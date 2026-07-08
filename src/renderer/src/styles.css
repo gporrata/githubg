@@ -147,6 +147,12 @@ h2 {
   background: #ffffff;
 }
 
+.empty-list--error {
+  color: #b4232f;
+  border-color: #f0b7bd;
+  background: #fff7f7;
+}
+
 .pr-list {
   display: grid;
   gap: 12px;
