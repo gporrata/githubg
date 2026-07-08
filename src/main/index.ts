@@ -4,7 +4,6 @@ import { getIconPath, setOpenPullRequestBadge } from './badge';
 import { GithubAuthError, initializeGithubAuth } from './githubAuth';
 import { registerIpcHandlers } from './ipc';
 
-const placeholderOpenPullRequestCount = 0;
 let mainWindow: BrowserWindow | null = null;
 
 app.setName('githubg');
@@ -99,7 +98,7 @@ if (!hasSingleInstanceLock) {
     .then(() => app.whenReady())
     .then(() => {
       registerIpcHandlers();
-      setOpenPullRequestBadge(placeholderOpenPullRequestCount);
+      setOpenPullRequestBadge([]);
       createWindow();
 
       app.on('activate', () => {

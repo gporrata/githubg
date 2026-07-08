@@ -30,24 +30,36 @@
     ],
     "extraResources": [
       {
-        "from": "resources/icon.png",
-        "to": "icon.png"
+        "from": "resources/icon-white.png",
+        "to": "icon-white.png"
+      },
+      {
+        "from": "resources/icon-red.png",
+        "to": "icon-red.png"
+      },
+      {
+        "from": "resources/icon-green.png",
+        "to": "icon-green.png"
+      },
+      {
+        "from": "resources/icon-light-blue.png",
+        "to": "icon-light-blue.png"
       }
     ],
     "mac": {
-      "icon": "resources/icon.png",
+      "icon": "resources/icon-white.png",
       "target": [
         "dmg"
       ]
     },
     "linux": {
-      "icon": "resources/icon.png",
+      "icon": "resources/icon-white.png",
       "target": [
         "AppImage"
       ]
     },
     "win": {
-      "icon": "resources/icon.png",
+      "icon": "resources/icon-white.png",
       "target": [
         "nsis"
       ]

@@ -65,7 +65,7 @@ export const registerIpcHandlers = (): void => {
 
   ipcMain.handle('pull-requests:list-open', async () => {
     const pullRequests = await fetchOpenPullRequestsForViewer();
-    setOpenPullRequestBadge(pullRequests.filter((pullRequest) => pullRequest.state === 'OPEN').length);
+    setOpenPullRequestBadge(pullRequests);
     return pullRequests;
   });
   ipcMain.handle('pull-requests:list-reviews', () => fetchOpenPullRequestsForTeamMembers());

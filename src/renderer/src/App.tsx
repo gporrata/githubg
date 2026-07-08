@@ -160,7 +160,7 @@ export const App = (): JSX.Element => {
     <div className="app-shell">
       <header className="top-bar">
         <div className="brand-lockup">
-          <img src="/icon.png" alt="" className="brand-icon" />
+          <img src="/icon-white.png" alt="" className="brand-icon" />
           <h1>githubg</h1>
         </div>
         <nav className="tabs" aria-label="Main views">
