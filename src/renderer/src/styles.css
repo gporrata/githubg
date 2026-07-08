@@ -255,7 +255,7 @@ h2 {
   border-left-color: var(--warning);
 }
 
-.pr-card--comments {
+.pr-card--changes-requested {
   border-left-color: #c83f49;
 }
 
@@ -446,9 +446,9 @@ h3 {
   text-transform: none;
 }
 
-.merge-button {
+.merge-button,
+.review-request-button {
   height: 34px;
-  min-width: 92px;
   padding: 0 14px;
   color: var(--accent-text);
   background: var(--accent);
@@ -456,7 +456,19 @@ h3 {
   cursor: pointer;
 }
 
-.merge-button:disabled {
+.merge-button {
+  min-width: 92px;
+}
+
+.review-request-button {
+  min-width: 142px;
+  color: var(--text-strong);
+  background: var(--surface);
+  border: 1px solid var(--border-strong);
+}
+
+.merge-button:disabled,
+.review-request-button:disabled {
   color: #778190;
   background: #d8dee6;
   cursor: not-allowed;

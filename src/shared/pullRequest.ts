@@ -2,6 +2,16 @@ export type PullRequestReviewDecision = 'APPROVED' | 'CHANGES_REQUESTED' | 'REVI
 
 export type PullRequestCheckState = 'EXPECTED' | 'ERROR' | 'FAILURE' | 'PENDING' | 'SUCCESS' | null;
 
+export type PullRequestMergeStateStatus =
+  | 'BEHIND'
+  | 'BLOCKED'
+  | 'CLEAN'
+  | 'DIRTY'
+  | 'DRAFT'
+  | 'HAS_HOOKS'
+  | 'UNKNOWN'
+  | 'UNSTABLE';
+
 export type PullRequestCommentThread = {
   id: string;
   path: string;
@@ -15,6 +25,11 @@ export type PullRequestCommentThread = {
     createdAt: string;
     authorLogin: string | null;
   }>;
+};
+
+export type PullRequestReviewer = {
+  id: string;
+  login: string;
 };
 
 export type PullRequestSummary = {
@@ -38,9 +53,13 @@ export type PullRequestSummary = {
   reviewDecision: PullRequestReviewDecision;
   approved: boolean;
   mergeable: boolean;
+  mergeStateStatus: PullRequestMergeStateStatus;
+  canBeMerged: boolean;
   mergeInProgress: boolean;
+  hasActiveActions: boolean;
   checksState: PullRequestCheckState;
   requiredStatusChecksPassed: boolean;
   isDraft: boolean;
+  requestedChangeReviewers: PullRequestReviewer[];
   commentThreads: PullRequestCommentThread[];
 };

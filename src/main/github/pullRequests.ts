@@ -1,13 +1,15 @@
-import type { PullRequestSummary } from '../../shared/pullRequest';
+import type { PullRequestReviewer, PullRequestSummary } from '../../shared/pullRequest';
 import { githubGraphql } from './graphqlClient';
 import {
   PULL_REQUEST_SEARCH_QUERY,
   PULL_REQUEST_NODES_QUERY,
+  REQUEST_REVIEWS_MUTATION,
   VIEWER_QUERY,
   type GithubPullRequestNode,
   type GithubPullRequestNodesResponse,
   type GithubPullRequestSearchResponse,
   type GithubViewerResponse,
+  type RequestReviewsResponse,
 } from './pullRequestQueries';
 import { getVisibleTrackedMergedPullRequestIds } from './mergedPullRequestTracking';
 import { getAppStore } from '../store';
@@ -84,10 +86,46 @@ const comparePullRequests = (left: PullRequestSummary, right: PullRequestSummary
   return left.repositoryNameWithOwner.localeCompare(right.repositoryNameWithOwner);
 };
 
-const mapPullRequest = (node: GithubPullRequestNode): PullRequestSummary => {
+const mergeableStates = new Set(['CLEAN', 'HAS_HOOKS', 'UNSTABLE']);
+
+const getRequestedChangeReviewers = (node: GithubPullRequestNode): PullRequestReviewer[] => {
+  const latestDecisiveReviewByAuthor = new Map<
+    string,
+    { id: string; state: 'APPROVED' | 'CHANGES_REQUESTED'; submittedAt: string }
+  >();
+
+  for (const review of node.reviews.nodes) {
+    if (!review?.author?.id || !review.submittedAt) {
+      continue;
+    }
+
+    if (review.state !== 'APPROVED' && review.state !== 'CHANGES_REQUESTED') {
+      continue;
+    }
+
+    const existing = latestDecisiveReviewByAuthor.get(review.author.login);
+
+    if (!existing || review.submittedAt > existing.submittedAt) {
+      latestDecisiveReviewByAuthor.set(review.author.login, {
+        id: review.author.id,
+        state: review.state,
+        submittedAt: review.submittedAt,
+      });
+    }
+  }
+
+  return [...latestDecisiveReviewByAuthor.entries()]
+    .filter(([, review]) => review.state === 'CHANGES_REQUESTED')
+    .map(([login, review]) => ({ id: review.id, login }))
+    .sort((left, right) => left.login.localeCompare(right.login));
+};
+
+const mapPullRequest = (node: GithubPullRequestNode, hasActiveActions = false): PullRequestSummary => {
   const latestCommit = node.commits.nodes.at(0)?.commit;
   const checksState = latestCommit?.statusCheckRollup?.state ?? null;
   const ticketNumber = parseTicketNumber(node.headRefName);
+  const requestedChangeReviewers =
+    node.reviewDecision === 'CHANGES_REQUESTED' ? getRequestedChangeReviewers(node) : [];
 
   return {
     id: node.id,
@@ -110,10 +148,17 @@ const mapPullRequest = (node: GithubPullRequestNode): PullRequestSummary => {
     reviewDecision: node.reviewDecision,
     approved: node.reviewDecision === 'APPROVED',
     mergeable: node.mergeable === 'MERGEABLE',
+    mergeStateStatus: node.mergeStateStatus,
+    canBeMerged:
+      node.state === 'OPEN' &&
+      node.mergeable === 'MERGEABLE' &&
+      mergeableStates.has(node.mergeStateStatus),
     mergeInProgress: false,
+    hasActiveActions,
     checksState,
     requiredStatusChecksPassed: checksState === 'SUCCESS',
     isDraft: node.isDraft,
+    requestedChangeReviewers,
     commentThreads: node.reviewThreads.nodes
       .filter((thread) => thread !== null)
       .map((thread) => ({
@@ -135,7 +180,10 @@ const mapPullRequest = (node: GithubPullRequestNode): PullRequestSummary => {
   };
 };
 
-const fetchPullRequestsByIds = async (ids: string[]): Promise<PullRequestSummary[]> => {
+const fetchPullRequestsByIds = async (
+  ids: string[],
+  hasActiveActions = false,
+): Promise<PullRequestSummary[]> => {
   if (ids.length === 0) {
     return [];
   }
@@ -146,7 +194,7 @@ const fetchPullRequestsByIds = async (ids: string[]): Promise<PullRequestSummary
 
   return response.nodes
     .filter((node) => node?.__typename === 'PullRequest')
-    .map((node) => mapPullRequest(node));
+    .map((node) => mapPullRequest(node, hasActiveActions));
 };
 
 export const fetchViewerLogin = async (): Promise<string> => {
@@ -203,13 +251,27 @@ export const fetchOpenPullRequestsForViewer = async (): Promise<PullRequestSumma
   const pullRequests = await fetchOpenPullRequestsBySearchQuery(query);
   const mergedTodayPullRequests = await fetchMergedTodayPullRequestsForAuthor(viewerLogin);
   const trackedMergedIds = await getVisibleTrackedMergedPullRequestIds();
-  const trackedMergedPullRequests = await fetchPullRequestsByIds(trackedMergedIds);
+  const trackedMergedPullRequests = await fetchPullRequestsByIds(trackedMergedIds, true);
 
   return dedupePullRequests([
     ...pullRequests,
     ...mergedTodayPullRequests,
     ...trackedMergedPullRequests,
   ]).sort(comparePullRequests);
+};
+
+export const requestPullRequestReview = async (
+  pullRequestId: string,
+  userIds: string[],
+): Promise<void> => {
+  if (userIds.length === 0) {
+    return;
+  }
+
+  await githubGraphql<RequestReviewsResponse>(REQUEST_REVIEWS_MUTATION, {
+    pullRequestId,
+    userIds,
+  });
 };
 
 export const fetchOpenPullRequestsForAuthors = async (

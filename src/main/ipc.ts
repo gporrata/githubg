@@ -7,6 +7,7 @@ import { mergePullRequest } from './github/mergePullRequest';
 import {
   fetchOpenPullRequestsForTeamMembers,
   fetchOpenPullRequestsForViewer,
+  requestPullRequestReview,
 } from './github/pullRequests';
 import { getAppStore } from './store';
 
@@ -93,6 +94,13 @@ export const registerIpcHandlers = (): void => {
       }
 
       await mergePullRequest(pullRequestId, mergeMethod);
+    },
+  );
+
+  ipcMain.handle(
+    'pull-request:request-review',
+    async (_event, pullRequestId: string, userIds: string[]): Promise<void> => {
+      await requestPullRequestReview(pullRequestId, userIds);
     },
   );
 };

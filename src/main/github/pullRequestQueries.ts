@@ -33,6 +33,15 @@ export type GithubPullRequestNode = {
   isDraft: boolean;
   headRefName: string;
   mergeable: 'MERGEABLE' | 'CONFLICTING' | 'UNKNOWN';
+  mergeStateStatus:
+    | 'BEHIND'
+    | 'BLOCKED'
+    | 'CLEAN'
+    | 'DIRTY'
+    | 'DRAFT'
+    | 'HAS_HOOKS'
+    | 'UNKNOWN'
+    | 'UNSTABLE';
   reviewDecision: 'APPROVED' | 'CHANGES_REQUESTED' | 'REVIEW_REQUIRED' | null;
   repository: {
     id: string;
@@ -49,6 +58,17 @@ export type GithubPullRequestNode = {
   } | null;
   comments: {
     totalCount: number;
+  };
+  reviews: {
+    nodes: Array<{
+      id: string;
+      state: 'APPROVED' | 'CHANGES_REQUESTED' | 'COMMENTED' | 'DISMISSED' | 'PENDING';
+      submittedAt: string | null;
+      author: {
+        login: string;
+        id?: string;
+      } | null;
+    } | null>;
   };
   reviewThreads: {
     totalCount: number;
@@ -117,6 +137,7 @@ const PULL_REQUEST_FIELDS = `
     isDraft
     headRefName
     mergeable
+    mergeStateStatus
     reviewDecision
     repository {
       id
@@ -133,6 +154,19 @@ const PULL_REQUEST_FIELDS = `
     }
     comments {
       totalCount
+    }
+    reviews(last: 50) {
+      nodes {
+        id
+        state
+        submittedAt
+        author {
+          login
+          ... on User {
+            id
+          }
+        }
+      }
     }
     reviewThreads(first: 25) {
       totalCount
@@ -244,6 +278,24 @@ export const MERGE_PULL_REQUEST_MUTATION = `
         repository {
           nameWithOwner
         }
+      }
+    }
+  }
+`;
+
+export type RequestReviewsResponse = {
+  requestReviews: {
+    pullRequest: {
+      id: string;
+    } | null;
+  } | null;
+};
+
+export const REQUEST_REVIEWS_MUTATION = `
+  mutation RequestReviews($pullRequestId: ID!, $userIds: [ID!]) {
+    requestReviews(input: { pullRequestId: $pullRequestId, userIds: $userIds, union: true }) {
+      pullRequest {
+        id
       }
     }
   }

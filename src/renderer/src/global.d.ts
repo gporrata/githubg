@@ -16,6 +16,7 @@ declare global {
       getMergeMethod: (pullRequestId: string) => Promise<MergeMethod>;
       setMergeMethod: (pullRequestId: string, mergeMethod: MergeMethod) => Promise<MergeMethod>;
       mergePullRequest: (pullRequestId: string, mergeMethod: MergeMethod) => Promise<void>;
+      requestPullRequestReview: (pullRequestId: string, userIds: string[]) => Promise<void>;
     };
   }
 }
