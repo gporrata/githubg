@@ -113,6 +113,6 @@ Once done remove plan.md. Reedit about.md so that its clear and understandable. 
   Configure packaging/build output for local installs (app is not
   publicly distributed).
 
-- [ ] `docs: add readme with setup and usage instructions`
+- [x] `docs: add readme with setup and usage instructions`
   Document prerequisites (`gh` CLI installed/authenticated), install/dev/
   build commands, and a short feature overview.
