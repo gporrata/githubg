@@ -37,6 +37,7 @@ export type PullRequestSummary = {
   reviewDecision: PullRequestReviewDecision;
   approved: boolean;
   mergeable: boolean;
+  mergeInProgress: boolean;
   checksState: PullRequestCheckState;
   requiredStatusChecksPassed: boolean;
   isDraft: boolean;

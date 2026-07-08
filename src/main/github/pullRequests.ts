@@ -83,6 +83,7 @@ const mapPullRequest = (node: GithubPullRequestNode): PullRequestSummary => {
     reviewDecision: node.reviewDecision,
     approved: node.reviewDecision === 'APPROVED',
     mergeable: node.mergeable === 'MERGEABLE',
+    mergeInProgress: false,
     checksState,
     requiredStatusChecksPassed: checksState === 'SUCCESS',
     isDraft: node.isDraft,

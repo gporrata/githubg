@@ -78,7 +78,7 @@ Once done remove plan.md. Reedit about.md so that its clear and understandable. 
   Main window layout: Open PRs / Reviews tabs, footer with '+' button
   (left) and gear icon (right aligned).
 
-- [ ] `feat: implement PR card component with open/collapsed states`
+- [x] `feat: implement PR card component with open/collapsed states`
   Card shows PR name, branch, GitHub link, created date, comment count,
   approval status, merge-in-progress state, and border color rules
   (yellow/red/green). Collapsed state adds comment threads with links.

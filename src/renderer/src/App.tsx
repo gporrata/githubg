@@ -1,5 +1,7 @@
 import { Plus, Settings } from 'lucide-react';
 import { useState } from 'react';
+import type { PullRequestSummary } from '../../shared/pullRequest';
+import { PullRequestCard } from './components/PullRequestCard';
 
 type TabId = 'open-prs' | 'reviews';
 
@@ -10,6 +12,9 @@ const tabs: Array<{ id: TabId; label: string }> = [
 
 export const App = (): JSX.Element => {
   const [activeTab, setActiveTab] = useState<TabId>('open-prs');
+  const openPullRequests: PullRequestSummary[] = [];
+  const reviewPullRequests: PullRequestSummary[] = [];
+  const activePullRequests = activeTab === 'open-prs' ? openPullRequests : reviewPullRequests;
 
   return (
     <div className="app-shell">
@@ -34,23 +39,28 @@ export const App = (): JSX.Element => {
       </header>
 
       <main className="content-region">
-        {activeTab === 'open-prs' ? (
-          <section className="panel" aria-labelledby="open-prs-heading">
-            <div className="panel-header">
-              <h2 id="open-prs-heading">Open PRs</h2>
-              <span className="count-pill">0</span>
+        <section
+          className="panel"
+          aria-labelledby={activeTab === 'open-prs' ? 'open-prs-heading' : 'reviews-heading'}
+        >
+          <div className="panel-header">
+            <h2 id={activeTab === 'open-prs' ? 'open-prs-heading' : 'reviews-heading'}>
+              {activeTab === 'open-prs' ? 'Open PRs' : 'Reviews'}
+            </h2>
+            <span className="count-pill">{activePullRequests.length}</span>
+          </div>
+          {activePullRequests.length > 0 ? (
+            <div className="pr-list">
+              {activePullRequests.map((pullRequest) => (
+                <PullRequestCard key={pullRequest.id} pullRequest={pullRequest} />
+              ))}
             </div>
-            <div className="empty-list">No open PRs loaded.</div>
-          </section>
-        ) : (
-          <section className="panel" aria-labelledby="reviews-heading">
-            <div className="panel-header">
-              <h2 id="reviews-heading">Reviews</h2>
-              <span className="count-pill">0</span>
+          ) : (
+            <div className="empty-list">
+              {activeTab === 'open-prs' ? 'No open PRs loaded.' : 'No team PRs loaded.'}
             </div>
-            <div className="empty-list">No team PRs loaded.</div>
-          </section>
-        )}
+          )}
+        </section>
       </main>
 
       <footer className="footer-bar">
