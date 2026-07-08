@@ -14,6 +14,28 @@ import { getAppStore } from '../store';
 
 const ticketNumberPattern = /[a-z]+-\d+/i;
 
+const startOfToday = (): Date => {
+  const today = new Date();
+  return new Date(today.getFullYear(), today.getMonth(), today.getDate());
+};
+
+const githubDate = (date: Date): string => date.toISOString().slice(0, 10);
+
+const isToday = (value: string | null): boolean => {
+  if (!value) {
+    return false;
+  }
+
+  const date = new Date(value);
+  const today = new Date();
+
+  return (
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate()
+  );
+};
+
 const parseTicketNumber = (branchName: string): string | null => {
   const match = ticketNumberPattern.exec(branchName);
   return match ? match[0].toLowerCase() : null;
@@ -157,6 +179,14 @@ const fetchOpenPullRequestsBySearchQuery = async (query: string): Promise<PullRe
   return pullRequests;
 };
 
+const fetchMergedTodayPullRequestsForAuthor = async (authorLogin: string): Promise<PullRequestSummary[]> => {
+  const queryStartDate = githubDate(startOfToday());
+  const query = `is:pr is:merged archived:false author:${authorLogin} merged:>=${queryStartDate}`;
+  const pullRequests = await fetchOpenPullRequestsBySearchQuery(query);
+
+  return pullRequests.filter((pullRequest) => isToday(pullRequest.mergedAt));
+};
+
 const dedupePullRequests = (pullRequests: PullRequestSummary[]): PullRequestSummary[] => {
   const byId = new Map<string, PullRequestSummary>();
 
@@ -171,19 +201,29 @@ export const fetchOpenPullRequestsForViewer = async (): Promise<PullRequestSumma
   const viewerLogin = await fetchViewerLogin();
   const query = `is:pr is:open archived:false author:${viewerLogin}`;
   const pullRequests = await fetchOpenPullRequestsBySearchQuery(query);
+  const mergedTodayPullRequests = await fetchMergedTodayPullRequestsForAuthor(viewerLogin);
   const trackedMergedIds = await getVisibleTrackedMergedPullRequestIds();
   const trackedMergedPullRequests = await fetchPullRequestsByIds(trackedMergedIds);
 
-  return [...pullRequests, ...trackedMergedPullRequests].sort(comparePullRequests);
+  return dedupePullRequests([
+    ...pullRequests,
+    ...mergedTodayPullRequests,
+    ...trackedMergedPullRequests,
+  ]).sort(comparePullRequests);
 };
 
 export const fetchOpenPullRequestsForAuthors = async (
   authorLogins: string[],
 ): Promise<PullRequestSummary[]> => {
   const batches = await Promise.all(
-    authorLogins.map((login) =>
-      fetchOpenPullRequestsBySearchQuery(`is:pr is:open archived:false author:${login}`),
-    ),
+    authorLogins.map(async (login) => {
+      const [openPullRequests, mergedTodayPullRequests] = await Promise.all([
+        fetchOpenPullRequestsBySearchQuery(`is:pr is:open archived:false author:${login}`),
+        fetchMergedTodayPullRequestsForAuthor(login),
+      ]);
+
+      return [...openPullRequests, ...mergedTodayPullRequests];
+    }),
   );
 
   return dedupePullRequests(batches.flat()).sort(comparePullRequests);
