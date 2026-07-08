@@ -44,6 +44,8 @@ export const PullRequestCard = ({ pullRequest }: PullRequestCardProps): JSX.Elem
   const reviewLabel = getReviewLabel(pullRequest);
   const createdAt = useMemo(() => formatDate(pullRequest.createdAt), [pullRequest.createdAt]);
   const canMerge = pullRequest.mergeable && pullRequest.requiredStatusChecksPassed && !isMerging;
+  const hasRunningAction =
+    isMerging || pullRequest.mergeInProgress || pullRequest.checksState === 'PENDING';
 
   useEffect(() => {
     let isCurrent = true;
@@ -78,7 +80,7 @@ export const PullRequestCard = ({ pullRequest }: PullRequestCardProps): JSX.Elem
   };
 
   return (
-    <article className={`pr-card pr-card--${tone}`}>
+    <article className={`pr-card pr-card--${tone}${hasRunningAction ? ' pr-card--action-running' : ''}`}>
       <header className="pr-card-header">
         <button
           type="button"
