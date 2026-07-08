@@ -109,7 +109,7 @@ Once done remove plan.md. Reedit about.md so that its clear and understandable. 
   Background polling loop refreshes Open PRs / Reviews data and the open
   PR badge count on a configurable interval.
 
-- [ ] `build: package app with electron-builder`
+- [x] `build: package app with electron-builder`
   Configure packaging/build output for local installs (app is not
   publicly distributed).
 

@@ -10,9 +10,46 @@
   "scripts": {
     "dev": "electron-vite dev",
     "build": "npm run typecheck && electron-vite build",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder",
     "lint": "eslint .",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "build": {
+    "appId": "dev.githubg.app",
+    "productName": "githubg",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "out/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/icon.png",
+        "to": "icon.png"
+      }
+    ],
+    "mac": {
+      "icon": "resources/icon.png",
+      "target": [
+        "dmg"
+      ]
+    },
+    "linux": {
+      "icon": "resources/icon.png",
+      "target": [
+        "AppImage"
+      ]
+    },
+    "win": {
+      "icon": "resources/icon.png",
+      "target": [
+        "nsis"
+      ]
+    }
   },
   "dependencies": {
     "@octokit/graphql": "^9.0.3",
@@ -30,6 +67,7 @@
     "@types/react": "^19.0.2",
     "@types/react-dom": "^19.0.2",
     "electron": "^43.1.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^9.17.0",
     "prettier": "^3.4.2",
     "typescript": "^5.7.2",
