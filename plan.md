@@ -70,7 +70,7 @@ Once done remove plan.md. Reedit about.md so that its clear and understandable. 
   parse ticket number from branch name via regex; sort by branch name then
   ticket number, unmatched branches last.
 
-- [ ] `feat: add local persistence store`
+- [x] `feat: add local persistence store`
   Set up `electron-store` (or SQLite) with schemas for team members,
   settings (theme), and merged-PR tracking state.
 
