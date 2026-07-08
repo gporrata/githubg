@@ -32,6 +32,7 @@ export type PullRequestSummary = {
   mergedAt: string | null;
   authorLogin: string | null;
   branchName: string;
+  headSha: string | null;
   ticketNumber: string | null;
   commentCount: number;
   reviewDecision: PullRequestReviewDecision;

@@ -67,10 +67,12 @@ export const getAppStore = (): Store<AppStoreSchema> => {
         default: {},
         additionalProperties: {
           type: 'object',
-          required: ['mergedAt'],
+          required: ['mergedAt', 'repositoryNameWithOwner', 'mergeCommitOid'],
           additionalProperties: false,
           properties: {
             mergedAt: { type: 'string' },
+            repositoryNameWithOwner: { type: 'string' },
+            mergeCommitOid: { type: 'string' },
             workflowCompletedAt: { type: 'string' },
           },
         },

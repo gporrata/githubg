@@ -14,6 +14,8 @@ export type TeamMember = {
 
 export type MergedPullRequestTracking = {
   mergedAt: string;
+  repositoryNameWithOwner: string;
+  mergeCommitOid: string;
   workflowCompletedAt?: string;
 };
 

@@ -88,7 +88,7 @@ Once done remove plan.md. Reedit about.md so that its clear and understandable. 
   disabled until required status checks pass; calls GraphQL/REST mutation
   to merge on click.
 
-- [ ] `feat: track post-merge visibility via workflow run completion`
+- [x] `feat: track post-merge visibility via workflow run completion`
   After a PR merges, keep it visible until its triggered GitHub Actions
   workflow runs complete, capped at the day after merge; persist merge
   timestamp in local store.

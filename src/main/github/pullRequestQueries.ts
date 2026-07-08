@@ -9,6 +9,10 @@ export type GithubPullRequestSearchResponse = {
   };
 };
 
+export type GithubPullRequestNodesResponse = {
+  nodes: Array<GithubPullRequestNode | null>;
+};
+
 export type GithubViewerResponse = {
   viewer: {
     login: string;
@@ -99,6 +103,87 @@ export const VIEWER_QUERY = `
   }
 `;
 
+const PULL_REQUEST_FIELDS = `
+  fragment PullRequestFields on PullRequest {
+    id
+    databaseId
+    number
+    title
+    url
+    state
+    createdAt
+    updatedAt
+    mergedAt
+    isDraft
+    headRefName
+    mergeable
+    reviewDecision
+    repository {
+      id
+      name
+      nameWithOwner
+      owner {
+        login
+      }
+    }
+    author {
+      login
+      avatarUrl
+      url
+    }
+    comments {
+      totalCount
+    }
+    reviewThreads(first: 25) {
+      totalCount
+      nodes {
+        id
+        isResolved
+        isOutdated
+        path
+        line
+        comments(first: 10) {
+          nodes {
+            id
+            url
+            bodyText
+            createdAt
+            author {
+              login
+            }
+          }
+        }
+      }
+    }
+    commits(last: 1) {
+      nodes {
+        commit {
+          oid
+          statusCheckRollup {
+            state
+            contexts(first: 50) {
+              nodes {
+                __typename
+                ... on CheckRun {
+                  name
+                  conclusion
+                  status
+                  detailsUrl
+                }
+                ... on StatusContext {
+                  context
+                  state
+                  targetUrl
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
 export const PULL_REQUEST_SEARCH_QUERY = `
   query PullRequestSearch($query: String!, $cursor: String) {
     search(query: $query, type: ISSUE, first: 50, after: $cursor) {
@@ -110,86 +195,24 @@ export const PULL_REQUEST_SEARCH_QUERY = `
       nodes {
         __typename
         ... on PullRequest {
-          id
-          databaseId
-          number
-          title
-          url
-          state
-          createdAt
-          updatedAt
-          mergedAt
-          isDraft
-          headRefName
-          mergeable
-          reviewDecision
-          repository {
-            id
-            name
-            nameWithOwner
-            owner {
-              login
-            }
-          }
-          author {
-            login
-            avatarUrl
-            url
-          }
-          comments {
-            totalCount
-          }
-          reviewThreads(first: 25) {
-            totalCount
-            nodes {
-              id
-              isResolved
-              isOutdated
-              path
-              line
-              comments(first: 10) {
-                nodes {
-                  id
-                  url
-                  bodyText
-                  createdAt
-                  author {
-                    login
-                  }
-                }
-              }
-            }
-          }
-          commits(last: 1) {
-            nodes {
-              commit {
-                oid
-                statusCheckRollup {
-                  state
-                  contexts(first: 50) {
-                    nodes {
-                      __typename
-                      ... on CheckRun {
-                        name
-                        conclusion
-                        status
-                        detailsUrl
-                      }
-                      ... on StatusContext {
-                        context
-                        state
-                        targetUrl
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
+          ...PullRequestFields
         }
       }
     }
   }
+  ${PULL_REQUEST_FIELDS}
+`;
+
+export const PULL_REQUEST_NODES_QUERY = `
+  query PullRequestNodes($ids: [ID!]!) {
+    nodes(ids: $ids) {
+      __typename
+      ... on PullRequest {
+        ...PullRequestFields
+      }
+    }
+  }
+  ${PULL_REQUEST_FIELDS}
 `;
 
 export type MergePullRequestResponse = {
@@ -198,6 +221,12 @@ export type MergePullRequestResponse = {
       id: string;
       state: 'MERGED';
       mergedAt: string | null;
+      mergeCommit: {
+        oid: string;
+      } | null;
+      repository: {
+        nameWithOwner: string;
+      };
     } | null;
   } | null;
 };
@@ -209,6 +238,12 @@ export const MERGE_PULL_REQUEST_MUTATION = `
         id
         state
         mergedAt
+        mergeCommit {
+          oid
+        }
+        repository {
+          nameWithOwner
+        }
       }
     }
   }

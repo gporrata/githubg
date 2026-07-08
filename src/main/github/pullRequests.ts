@@ -2,11 +2,14 @@ import type { PullRequestSummary } from '../../shared/pullRequest';
 import { githubGraphql } from './graphqlClient';
 import {
   PULL_REQUEST_SEARCH_QUERY,
+  PULL_REQUEST_NODES_QUERY,
   VIEWER_QUERY,
   type GithubPullRequestNode,
+  type GithubPullRequestNodesResponse,
   type GithubPullRequestSearchResponse,
   type GithubViewerResponse,
 } from './pullRequestQueries';
+import { getVisibleTrackedMergedPullRequestIds } from './mergedPullRequestTracking';
 
 const ticketNumberPattern = /[a-z]+-\d+/i;
 
@@ -78,6 +81,7 @@ const mapPullRequest = (node: GithubPullRequestNode): PullRequestSummary => {
     mergedAt: node.mergedAt,
     authorLogin: node.author?.login ?? null,
     branchName: node.headRefName,
+    headSha: latestCommit?.oid ?? null,
     ticketNumber,
     commentCount: node.comments.totalCount + node.reviewThreads.totalCount,
     reviewDecision: node.reviewDecision,
@@ -106,6 +110,20 @@ const mapPullRequest = (node: GithubPullRequestNode): PullRequestSummary => {
           })),
       })),
   };
+};
+
+const fetchPullRequestsByIds = async (ids: string[]): Promise<PullRequestSummary[]> => {
+  if (ids.length === 0) {
+    return [];
+  }
+
+  const response = await githubGraphql<GithubPullRequestNodesResponse>(PULL_REQUEST_NODES_QUERY, {
+    ids,
+  });
+
+  return response.nodes
+    .filter((node) => node?.__typename === 'PullRequest')
+    .map((node) => mapPullRequest(node));
 };
 
 export const fetchViewerLogin = async (): Promise<string> => {
@@ -137,5 +155,8 @@ export const fetchOpenPullRequestsForViewer = async (): Promise<PullRequestSumma
     cursor = response.search.pageInfo.hasNextPage ? response.search.pageInfo.endCursor : null;
   } while (cursor);
 
-  return pullRequests.sort(comparePullRequests);
+  const trackedMergedIds = await getVisibleTrackedMergedPullRequestIds();
+  const trackedMergedPullRequests = await fetchPullRequestsByIds(trackedMergedIds);
+
+  return [...pullRequests, ...trackedMergedPullRequests].sort(comparePullRequests);
 };
