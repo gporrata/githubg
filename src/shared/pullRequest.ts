@@ -54,6 +54,7 @@ export type PullRequestSummary = {
   approved: boolean;
   mergeable: boolean;
   mergeStateStatus: PullRequestMergeStateStatus;
+  hasConflicts: boolean;
   canBeMerged: boolean;
   mergeInProgress: boolean;
   hasActiveActions: boolean;

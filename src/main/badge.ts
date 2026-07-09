@@ -24,6 +24,10 @@ const hasUnaddressedRequestedChanges = (pullRequest: PullRequestSummary): boolea
 };
 
 const getIconColor = (pullRequests: PullRequestSummary[]): AppIconColor => {
+  if (pullRequests.some((pullRequest) => pullRequest.state === 'OPEN' && pullRequest.hasConflicts)) {
+    return 'red';
+  }
+
   if (pullRequests.some(hasUnaddressedRequestedChanges)) {
     return 'red';
   }

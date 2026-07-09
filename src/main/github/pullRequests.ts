@@ -149,6 +149,7 @@ const mapPullRequest = (node: GithubPullRequestNode, hasActiveActions = false): 
     approved: node.reviewDecision === 'APPROVED',
     mergeable: node.mergeable === 'MERGEABLE',
     mergeStateStatus: node.mergeStateStatus,
+    hasConflicts: node.mergeable === 'CONFLICTING' || node.mergeStateStatus === 'DIRTY',
     canBeMerged:
       node.state === 'OPEN' &&
       node.mergeable === 'MERGEABLE' &&

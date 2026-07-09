@@ -21,6 +21,10 @@ const getCardTone = (pullRequest: PullRequestSummary): string => {
     return 'merged';
   }
 
+  if (pullRequest.hasConflicts) {
+    return 'conflicts';
+  }
+
   if (hasUnaddressedRequestedChanges(pullRequest)) {
     return 'changes-requested';
   }
