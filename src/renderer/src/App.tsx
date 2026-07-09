@@ -439,19 +439,13 @@ export const App = (): JSX.Element => {
                       </a>
                     </p>
                     <div className="jira-scope-note">
-                      <span>Required scopes:</span>
+                      <span>Required scopes: use classic scopes only.</span>
                       <ul>
                         <li>
-                          <code>read:me</code>
+                          <code>read:jira-work</code>
                         </li>
                         <li>
-                          <code>read:field:*</code>
-                        </li>
-                        <li>
-                          <code>read:issue-details:jira</code>
-                        </li>
-                        <li>
-                          <code>read:jql:jira</code>
+                          <code>read:jira-user</code>
                         </li>
                       </ul>
                     </div>
