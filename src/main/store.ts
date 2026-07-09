@@ -10,6 +10,7 @@ export type JiraCredentialState = {
   siteUrl: string;
   email: string;
   apiToken: string;
+  cloudId: string;
 };
 
 export type AppStoreSchema = {
@@ -90,12 +91,13 @@ export const getAppStore = (): ElectronStore<AppStoreSchema> => {
           { type: 'null' },
           {
             type: 'object',
-            required: ['siteUrl', 'email', 'apiToken'],
+            required: ['siteUrl', 'email', 'apiToken', 'cloudId'],
             additionalProperties: false,
             properties: {
               siteUrl: { type: 'string' },
               email: { type: 'string' },
               apiToken: { type: 'string' },
+              cloudId: { type: 'string' },
             },
           },
         ],

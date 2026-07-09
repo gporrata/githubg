@@ -8,10 +8,15 @@ import { jiraTicketStatuses } from '../shared/jira';
 import { getAppStore, type JiraCredentialState } from './store';
 
 const jiraStatusJql = jiraTicketStatuses.map((status) => `"${status}"`).join(', ');
+const atlassianApiBaseUrl = 'https://api.atlassian.com';
 
 type JiraCurrentUserResponse = {
   emailAddress?: string;
   displayName?: string;
+};
+
+type JiraTenantInfoResponse = {
+  cloudId?: string;
 };
 
 type JiraField = {
@@ -43,7 +48,7 @@ type JiraSprintFieldValue = {
 
 const normalizeSiteUrl = (siteUrl: string): string => siteUrl.trim().replace(/\/+$/, '');
 
-const normalizeCredentials = (credentials: JiraCredentials): JiraCredentialState => ({
+const normalizeCredentialInput = (credentials: JiraCredentials): JiraCredentials => ({
   siteUrl: normalizeSiteUrl(credentials.siteUrl),
   email: credentials.email.trim(),
   apiToken: credentials.apiToken.trim(),
@@ -62,12 +67,23 @@ const getRequiredJiraCredentials = (): JiraCredentialState => {
 const getBasicAuthHeader = (credentials: JiraCredentialState): string =>
   `Basic ${Buffer.from(`${credentials.email}:${credentials.apiToken}`).toString('base64')}`;
 
+const getJiraApiBaseUrl = (credentials: JiraCredentialState): string =>
+  `${atlassianApiBaseUrl}/ex/jira/${credentials.cloudId}`;
+
 const fetchJson = async <ResponseBody>(
   url: string,
   init: RequestInit,
   errorPrefix: string,
 ): Promise<ResponseBody> => {
-  const response = await fetch(url, init);
+  let response: Response;
+
+  try {
+    response = await fetch(url, init);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`${errorPrefix}: ${message}`);
+  }
+
   const bodyText = await response.text();
 
   if (!response.ok) {
@@ -84,7 +100,7 @@ const jiraRequest = async <ResponseBody>(
   errorPrefix = 'Unable to load Jira data',
 ): Promise<ResponseBody> =>
   fetchJson<ResponseBody>(
-    `${credentials.siteUrl}${path}`,
+    `${getJiraApiBaseUrl(credentials)}${path}`,
     {
       ...init,
       headers: {
@@ -95,6 +111,32 @@ const jiraRequest = async <ResponseBody>(
     },
     errorPrefix,
   );
+
+const fetchCloudId = async (siteUrl: string): Promise<string> => {
+  let parsedSiteUrl: URL;
+
+  try {
+    parsedSiteUrl = new URL(siteUrl);
+  } catch {
+    throw new Error('Enter a valid Jira URL.');
+  }
+
+  if (parsedSiteUrl.protocol !== 'https:') {
+    throw new Error('Enter a secure Jira URL that starts with https://.');
+  }
+
+  const tenantInfo = await fetchJson<JiraTenantInfoResponse>(
+    `${siteUrl}/_edge/tenant_info`,
+    { headers: { Accept: 'application/json' } },
+    'Unable to identify Jira site',
+  );
+
+  if (!tenantInfo.cloudId) {
+    throw new Error(`Unable to identify Jira site: no cloudId returned for ${siteUrl}.`);
+  }
+
+  return tenantInfo.cloudId;
+};
 
 const validateCredentials = async (
   credentials: JiraCredentialState,
@@ -130,21 +172,32 @@ export const getJiraAuthState = (): JiraAuthState => {
 };
 
 export const getJiraCredentials = (): JiraCredentials => {
-  return (
-    getAppStore().get('jiraCredentials', null) ?? {
-      siteUrl: '',
-      email: '',
-      apiToken: '',
-    }
-  );
+  const credentials = getAppStore().get('jiraCredentials', null);
+
+  return credentials
+    ? {
+        siteUrl: credentials.siteUrl,
+        email: credentials.email,
+        apiToken: credentials.apiToken,
+      }
+    : {
+        siteUrl: '',
+        email: '',
+        apiToken: '',
+      };
 };
 
 export const saveJiraCredentials = async (
   credentials: JiraCredentials,
 ): Promise<JiraAuthState> => {
-  const normalizedCredentials = normalizeCredentials(credentials);
-  await validateCredentials(normalizedCredentials);
-  getAppStore().set('jiraCredentials', normalizedCredentials);
+  const normalizedCredentials = normalizeCredentialInput(credentials);
+  const credentialState = {
+    ...normalizedCredentials,
+    cloudId: await fetchCloudId(normalizedCredentials.siteUrl),
+  };
+
+  await validateCredentials(credentialState);
+  getAppStore().set('jiraCredentials', credentialState);
   return getJiraAuthState();
 };
 
