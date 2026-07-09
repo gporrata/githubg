@@ -46,6 +46,10 @@ type JiraSprintFieldValue = {
   state?: unknown;
 };
 
+type JiraMappedIssue = JiraTicketSummary & {
+  hasActiveSprint: boolean;
+};
+
 const normalizeSiteUrl = (siteUrl: string): string => siteUrl.trim().replace(/\/+$/, '');
 
 const normalizeCredentialInput = (credentials: JiraCredentials): JiraCredentials => ({
@@ -261,12 +265,23 @@ const extractSprint = (value: unknown): string | null => {
   return null;
 };
 
+const hasActiveSprint = (value: unknown): boolean =>
+  Array.isArray(value) &&
+  value.some(
+    (item): item is JiraSprintFieldValue =>
+      Boolean(item) &&
+      typeof item === 'object' &&
+      'state' in item &&
+      typeof item.state === 'string' &&
+      item.state.toLowerCase() === 'active',
+  );
+
 const mapIssue = (
   issue: JiraIssue,
   siteUrl: string,
   sprintFieldId: string | null,
   pointsFieldId: string | null,
-): JiraTicketSummary => ({
+): JiraMappedIssue => ({
   id: issue.id,
   key: issue.key,
   summary: typeof issue.fields.summary === 'string' ? issue.fields.summary : issue.key,
@@ -277,8 +292,29 @@ const mapIssue = (
       ? (issue.fields.status.name as JiraTicketStatus | string)
       : 'Unknown',
   sprint: sprintFieldId ? extractSprint(issue.fields[sprintFieldId]) : null,
+  hasActiveSprint: sprintFieldId ? hasActiveSprint(issue.fields[sprintFieldId]) : false,
   points: pointsFieldId ? extractPoints(issue.fields[pointsFieldId]) : null,
   openPullRequests: [],
+});
+
+const shouldShowIssue = (issue: JiraMappedIssue): boolean => {
+  if (issue.status !== 'Done') {
+    return true;
+  }
+
+  return issue.hasActiveSprint;
+};
+
+const toTicketSummary = (issue: JiraMappedIssue): JiraTicketSummary => ({
+  id: issue.id,
+  key: issue.key,
+  summary: issue.summary,
+  description: issue.description,
+  url: issue.url,
+  status: issue.status,
+  sprint: issue.sprint,
+  points: issue.points,
+  openPullRequests: issue.openPullRequests,
 });
 
 export const fetchJiraTickets = async (): Promise<JiraTicketSummary[]> => {
@@ -311,7 +347,8 @@ export const fetchJiraTickets = async (): Promise<JiraTicketSummary[]> => {
     },
   );
 
-  return response.issues.map((issue) =>
-    mapIssue(issue, credentials.siteUrl, sprintFieldId, pointsFieldId),
-  );
+  return response.issues
+    .map((issue) => mapIssue(issue, credentials.siteUrl, sprintFieldId, pointsFieldId))
+    .filter(shouldShowIssue)
+    .map(toTicketSummary);
 };
