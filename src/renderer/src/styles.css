@@ -750,6 +750,13 @@ h3 {
   min-width: 92px;
 }
 
+.update-branch-button {
+  align-items: center;
+  display: inline-flex;
+  gap: 7px;
+  justify-content: center;
+}
+
 .review-request-button {
   min-width: 142px;
   color: var(--text-strong);

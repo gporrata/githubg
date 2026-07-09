@@ -565,6 +565,7 @@ export const App = (): JSX.Element => {
                     <PullRequestCard
                       key={pullRequest.id}
                       highlighted={highlightedPullRequestId === pullRequest.id}
+                      onPullRequestChanged={refreshPullRequests}
                       pullRequest={pullRequest}
                     />
                   ))}

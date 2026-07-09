@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
+import { ChevronDown, ChevronRight, ExternalLink, RefreshCw } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   getApprovedPullRequestBlockedReason,
@@ -10,6 +10,7 @@ import { mergeMethods } from '../../../shared/settings';
 
 type PullRequestCardProps = {
   highlighted?: boolean;
+  onPullRequestChanged?: () => Promise<void>;
   pullRequest: PullRequestSummary;
 };
 
@@ -100,7 +101,11 @@ const getMergeLabel = (pullRequest: PullRequestSummary): string => {
   return 'Ready';
 };
 
-export const PullRequestCard = ({ highlighted = false, pullRequest }: PullRequestCardProps): JSX.Element => {
+export const PullRequestCard = ({
+  highlighted = false,
+  onPullRequestChanged,
+  pullRequest,
+}: PullRequestCardProps): JSX.Element => {
   const cardRef = useRef<HTMLElement | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [mergeMethod, setMergeMethod] = useState<MergeMethod>('SQUASH');
@@ -166,6 +171,7 @@ export const PullRequestCard = ({ highlighted = false, pullRequest }: PullReques
     try {
       await window.githubg.mergePullRequest(pullRequest.id, mergeMethod);
       setHasLocalMergedActiveActions(true);
+      await onPullRequestChanged?.();
     } catch (error) {
       setMergeError(error instanceof Error ? error.message : 'Merge failed.');
     } finally {
@@ -195,6 +201,7 @@ export const PullRequestCard = ({ highlighted = false, pullRequest }: PullReques
 
     try {
       await window.githubg.updatePullRequestBranch(pullRequest.id);
+      await onPullRequestChanged?.();
     } catch (error) {
       setUpdateBranchError(error instanceof Error ? error.message : 'Update branch failed.');
     } finally {
@@ -314,11 +321,18 @@ export const PullRequestCard = ({ highlighted = false, pullRequest }: PullReques
             {approvedBlockedReason === 'out-of-date' ? (
               <button
                 type="button"
-                className="review-request-button"
+                className="review-request-button update-branch-button"
                 disabled={!canUpdateBranch}
                 onClick={handleUpdateBranch}
               >
-                {isUpdatingBranch ? 'Updating' : 'Update Branch'}
+                {isUpdatingBranch ? (
+                  <RefreshCw
+                    className="refresh-icon refresh-icon--spinning"
+                    size={15}
+                    strokeWidth={2.2}
+                  />
+                ) : null}
+                <span>{isUpdatingBranch ? 'Updating' : 'Update Branch'}</span>
               </button>
             ) : null}
             {mergeError ? <p className="merge-error">{mergeError}</p> : null}
