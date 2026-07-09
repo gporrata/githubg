@@ -514,14 +514,6 @@ h2 {
   box-shadow: 0 1px 2px rgb(16 24 40 / 6%);
 }
 
-.pr-card--action-running {
-  animation: pr-action-border-pulse 1.4s ease-in-out infinite;
-  border-color: var(--accent);
-  box-shadow:
-    0 1px 2px rgb(16 24 40 / 6%),
-    0 0 0 0 color-mix(in srgb, var(--accent) 36%, transparent);
-}
-
 .pr-card--quiet {
   border-left-color: var(--warning);
 }
@@ -553,11 +545,19 @@ h2 {
     0 0 0 4px color-mix(in srgb, var(--accent) 24%, transparent);
 }
 
+.pr-card--action-running {
+  animation: pr-action-border-pulse 1.4s ease-in-out infinite;
+  border-color: var(--warning);
+  box-shadow:
+    0 1px 2px rgb(16 24 40 / 6%),
+    0 0 0 0 color-mix(in srgb, var(--warning) 36%, transparent);
+}
+
 @keyframes pr-action-border-pulse {
   50% {
     box-shadow:
       0 1px 2px rgb(16 24 40 / 6%),
-      0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
+      0 0 0 4px color-mix(in srgb, var(--warning) 18%, transparent);
   }
 }
 
@@ -566,7 +566,7 @@ h2 {
     animation: none;
     box-shadow:
       0 1px 2px rgb(16 24 40 / 6%),
-      0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent);
+      0 0 0 2px color-mix(in srgb, var(--warning) 22%, transparent);
   }
 }
 
