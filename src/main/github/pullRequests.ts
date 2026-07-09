@@ -1,20 +1,37 @@
-import type { PullRequestReviewer, PullRequestSummary } from '../../shared/pullRequest';
+import type {
+  PullRequestActionRun,
+  PullRequestRerunMode,
+  PullRequestReviewer,
+  PullRequestSummary,
+} from '../../shared/pullRequest';
 import { githubGraphql } from './graphqlClient';
 import {
   PULL_REQUEST_SEARCH_QUERY,
   PULL_REQUEST_NODES_QUERY,
   REQUEST_REVIEWS_MUTATION,
+  UPDATE_PULL_REQUEST_BRANCH_MUTATION,
   VIEWER_QUERY,
   type GithubPullRequestNode,
   type GithubPullRequestNodesResponse,
   type GithubPullRequestSearchResponse,
   type GithubViewerResponse,
   type RequestReviewsResponse,
+  type UpdatePullRequestBranchResponse,
 } from './pullRequestQueries';
 import { getVisibleTrackedMergedPullRequestIds } from './mergedPullRequestTracking';
 import { getAppStore } from '../store';
+import { getGithubToken } from '../githubAuth';
 
 const ticketNumberPattern = /[a-z]+-\d+/i;
+const actionRunPattern = /\/actions\/runs\/(\d+)/;
+const failedCheckRunConclusions = new Set([
+  'ACTION_REQUIRED',
+  'CANCELLED',
+  'FAILURE',
+  'STARTUP_FAILURE',
+  'TIMED_OUT',
+]);
+const failedStatusStates = new Set(['ERROR', 'FAILURE']);
 
 const startOfToday = (): Date => {
   const today = new Date();
@@ -120,6 +137,53 @@ const getRequestedChangeReviewers = (node: GithubPullRequestNode): PullRequestRe
     .sort((left, right) => left.login.localeCompare(right.login));
 };
 
+const parseActionRunId = (url: string | null | undefined): number | null => {
+  if (!url) {
+    return null;
+  }
+
+  const match = actionRunPattern.exec(url);
+
+  return match ? Number(match[1]) : null;
+};
+
+const getFailedActionWorkflowRuns = (node: GithubPullRequestNode): PullRequestActionRun[] => {
+  const latestCommit = node.commits.nodes.at(0)?.commit;
+  const actionWorkflowRuns = new Map<number, PullRequestActionRun>();
+
+  for (const context of latestCommit?.statusCheckRollup?.contexts.nodes ?? []) {
+    if (!context) {
+      continue;
+    }
+
+    const isFailedCheckRun =
+      context.__typename === 'CheckRun' &&
+      context.conclusion !== null &&
+      failedCheckRunConclusions.has(context.conclusion);
+    const isFailedStatusContext =
+      context.__typename === 'StatusContext' &&
+      context.state !== null &&
+      failedStatusStates.has(context.state);
+
+    if (!isFailedCheckRun && !isFailedStatusContext) {
+      continue;
+    }
+
+    const runId = parseActionRunId(
+      context.__typename === 'CheckRun' ? context.detailsUrl : context.targetUrl,
+    );
+
+    if (runId !== null) {
+      actionWorkflowRuns.set(runId, {
+        id: runId,
+        name: context.__typename === 'CheckRun' ? (context.name ?? 'GitHub Actions') : (context.context ?? 'GitHub Actions'),
+      });
+    }
+  }
+
+  return [...actionWorkflowRuns.values()].sort((left, right) => left.name.localeCompare(right.name));
+};
+
 const mapPullRequest = (node: GithubPullRequestNode, hasActiveActions = false): PullRequestSummary => {
   const latestCommit = node.commits.nodes.at(0)?.commit;
   const checksState = latestCommit?.statusCheckRollup?.state ?? null;
@@ -149,6 +213,7 @@ const mapPullRequest = (node: GithubPullRequestNode, hasActiveActions = false): 
     approved: node.reviewDecision === 'APPROVED',
     mergeable: node.mergeable === 'MERGEABLE',
     mergeStateStatus: node.mergeStateStatus,
+    hasConflicts: node.mergeable === 'CONFLICTING' || node.mergeStateStatus === 'DIRTY',
     canBeMerged:
       node.state === 'OPEN' &&
       node.mergeable === 'MERGEABLE' &&
@@ -158,6 +223,7 @@ const mapPullRequest = (node: GithubPullRequestNode, hasActiveActions = false): 
     checksState,
     requiredStatusChecksPassed: checksState === 'SUCCESS',
     isDraft: node.isDraft,
+    actionWorkflowRuns: getFailedActionWorkflowRuns(node),
     requestedChangeReviewers,
     commentThreads: node.reviewThreads.nodes
       .filter((thread) => thread !== null)
@@ -272,6 +338,52 @@ export const requestPullRequestReview = async (
     pullRequestId,
     userIds,
   });
+};
+
+export const updatePullRequestBranch = async (pullRequestId: string): Promise<void> => {
+  await githubGraphql<UpdatePullRequestBranchResponse>(UPDATE_PULL_REQUEST_BRANCH_MUTATION, {
+    pullRequestId,
+  });
+};
+
+const githubRestRequest = async (path: string, init: RequestInit = {}): Promise<void> => {
+  const response = await fetch(`https://api.github.com${path}`, {
+    ...init,
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `Bearer ${getGithubToken()}`,
+      'X-GitHub-Api-Version': '2026-03-10',
+      ...init.headers,
+    },
+  });
+
+  if (!response.ok) {
+    const bodyText = await response.text();
+    throw new Error(`GitHub request failed: ${response.status} ${response.statusText} ${bodyText}`.trim());
+  }
+};
+
+export const rerunPullRequestWorkflowRuns = async (
+  repositoryNameWithOwner: string,
+  runIds: number[],
+  mode: PullRequestRerunMode,
+): Promise<void> => {
+  const [owner, repo] = repositoryNameWithOwner.split('/');
+
+  if (!owner || !repo || runIds.length === 0) {
+    return;
+  }
+
+  const endpoint = mode === 'failed' ? 'rerun-failed-jobs' : 'rerun';
+
+  await Promise.all(
+    [...new Set(runIds)].map((runId) =>
+      githubRestRequest(
+        `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/actions/runs/${runId}/${endpoint}`,
+        { method: 'POST' },
+      ),
+    ),
+  );
 };
 
 export const fetchOpenPullRequestsForAuthors = async (

@@ -1,10 +1,20 @@
-import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
-import type { PullRequestSummary } from '../../../shared/pullRequest';
+import { ChevronDown, ChevronRight, ExternalLink, RefreshCw } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  getApprovedPullRequestBlockedReason,
+  hasPullRequestConflicts,
+  type PullRequestRerunMode,
+  type PullRequestSummary,
+} from '../../../shared/pullRequest';
 import type { MergeMethod } from '../../../shared/settings';
-import { mergeMethods } from '../../../shared/settings';
+import {
+  MultiStateActionButton,
+  type MultiStateActionButtonOption,
+} from './MultiStateActionButton';
 
 type PullRequestCardProps = {
+  highlighted?: boolean;
+  onPullRequestChanged?: () => Promise<void>;
   pullRequest: PullRequestSummary;
 };
 
@@ -18,6 +28,16 @@ const formatDate = (value: string): string =>
 const getCardTone = (pullRequest: PullRequestSummary): string => {
   if (pullRequest.state === 'MERGED') {
     return 'merged';
+  }
+
+  if (hasPullRequestConflicts(pullRequest)) {
+    return 'conflicts';
+  }
+
+  const approvedBlockedReason = getApprovedPullRequestBlockedReason(pullRequest);
+
+  if (approvedBlockedReason === 'failed-checks' || approvedBlockedReason === 'out-of-date') {
+    return 'blocked';
   }
 
   if (hasUnaddressedRequestedChanges(pullRequest)) {
@@ -64,6 +84,24 @@ const getMergeLabel = (pullRequest: PullRequestSummary): string => {
     return pullRequest.hasActiveActions ? 'Actions running' : 'Merged';
   }
 
+  if (hasPullRequestConflicts(pullRequest)) {
+    return 'Conflicts';
+  }
+
+  const approvedBlockedReason = getApprovedPullRequestBlockedReason(pullRequest);
+
+  if (approvedBlockedReason === 'failed-checks') {
+    return 'Failed Checks';
+  }
+
+  if (approvedBlockedReason === 'out-of-date') {
+    return 'Out of Date';
+  }
+
+  if (approvedBlockedReason === 'actions-pending') {
+    return 'Actions Pending';
+  }
+
   if (!pullRequest.canBeMerged) {
     return 'Blocked';
   }
@@ -71,15 +109,72 @@ const getMergeLabel = (pullRequest: PullRequestSummary): string => {
   return 'Ready';
 };
 
-export const PullRequestCard = ({ pullRequest }: PullRequestCardProps): JSX.Element => {
+const mergeMethodOptions = [
+  {
+    value: 'SQUASH',
+    label: 'Squash and merge',
+    shortLabel: 'Squash',
+    actionLabel: 'Squash and merge',
+    description: 'The commits from this branch will be combined into one commit in the base branch.',
+    color: 'var(--accent)',
+  },
+  {
+    value: 'MERGE',
+    label: 'Create a merge commit',
+    shortLabel: 'Merge',
+    actionLabel: 'Create a merge commit',
+    description: 'All commits from this branch will be added to the base branch via a merge commit.',
+    color: '#2f6fed',
+  },
+  {
+    value: 'REBASE',
+    label: 'Rebase and merge',
+    shortLabel: 'Rebase',
+    actionLabel: 'Rebase and merge',
+    description: 'The commits from this branch will be rebased and added to the base branch.',
+    color: '#b45309',
+  },
+] satisfies readonly MultiStateActionButtonOption<MergeMethod>[];
+
+const rerunModeOptions = [
+  {
+    value: 'failed',
+    label: 'Rerun failed jobs',
+    shortLabel: 'Failed',
+    actionLabel: 'Rerun failed jobs',
+    description: 'Runs only the jobs that failed or were canceled in the workflow run.',
+    color: 'var(--danger)',
+  },
+  {
+    value: 'all',
+    label: 'Rerun all jobs',
+    shortLabel: 'All',
+    actionLabel: 'Rerun all jobs',
+    description: 'Runs every job in the workflow run again, including jobs that already passed.',
+    color: '#2f6fed',
+  },
+] satisfies readonly MultiStateActionButtonOption<PullRequestRerunMode>[];
+
+export const PullRequestCard = ({
+  highlighted = false,
+  onPullRequestChanged,
+  pullRequest,
+}: PullRequestCardProps): JSX.Element => {
+  const cardRef = useRef<HTMLElement | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [mergeMethod, setMergeMethod] = useState<MergeMethod>('SQUASH');
   const [isMerging, setIsMerging] = useState(false);
   const [mergeError, setMergeError] = useState<string | null>(null);
   const [reviewRequestError, setReviewRequestError] = useState<string | null>(null);
   const [isRequestingReview, setIsRequestingReview] = useState(false);
+  const [updateBranchError, setUpdateBranchError] = useState<string | null>(null);
+  const [isUpdatingBranch, setIsUpdatingBranch] = useState(false);
+  const [rerunMode, setRerunMode] = useState<PullRequestRerunMode>('failed');
+  const [rerunError, setRerunError] = useState<string | null>(null);
+  const [isRerunning, setIsRerunning] = useState(false);
   const [hasLocalMergedActiveActions, setHasLocalMergedActiveActions] = useState(false);
   const tone = getCardTone(pullRequest);
+  const approvedBlockedReason = getApprovedPullRequestBlockedReason(pullRequest);
   const reviewLabel = getReviewLabel(pullRequest);
   const createdAt = useMemo(() => formatDate(pullRequest.createdAt), [pullRequest.createdAt]);
   const mergeLabel = hasLocalMergedActiveActions ? 'Actions running' : getMergeLabel(pullRequest);
@@ -87,8 +182,15 @@ export const PullRequestCard = ({ pullRequest }: PullRequestCardProps): JSX.Elem
   const showMergeControls = pullRequest.canBeMerged || hasLocalMergedActiveActions || isMerging;
   const requestedChangeReviewers = pullRequest.requestedChangeReviewers;
   const canRequestReview = requestedChangeReviewers.length > 0 && !isRequestingReview;
+  const canUpdateBranch = approvedBlockedReason === 'out-of-date' && !isUpdatingBranch;
+  const canRerunChecks =
+    approvedBlockedReason === 'failed-checks' &&
+    pullRequest.actionWorkflowRuns.length > 0 &&
+    !isRerunning;
   const hasRunningAction =
     isMerging ||
+    isUpdatingBranch ||
+    isRerunning ||
     hasLocalMergedActiveActions ||
     pullRequest.mergeInProgress ||
     (pullRequest.state === 'MERGED' && pullRequest.hasActiveActions);
@@ -113,6 +215,12 @@ export const PullRequestCard = ({ pullRequest }: PullRequestCardProps): JSX.Elem
     }
   }, [pullRequest.hasActiveActions, pullRequest.state]);
 
+  useEffect(() => {
+    if (highlighted) {
+      cardRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }, [highlighted]);
+
   const handleMergeMethodChange = (value: MergeMethod): void => {
     setMergeMethod(value);
     void window.githubg.setMergeMethod(pullRequest.id, value);
@@ -125,6 +233,7 @@ export const PullRequestCard = ({ pullRequest }: PullRequestCardProps): JSX.Elem
     try {
       await window.githubg.mergePullRequest(pullRequest.id, mergeMethod);
       setHasLocalMergedActiveActions(true);
+      await onPullRequestChanged?.();
     } catch (error) {
       setMergeError(error instanceof Error ? error.message : 'Merge failed.');
     } finally {
@@ -148,8 +257,45 @@ export const PullRequestCard = ({ pullRequest }: PullRequestCardProps): JSX.Elem
     }
   };
 
+  const handleUpdateBranch = async (): Promise<void> => {
+    setIsUpdatingBranch(true);
+    setUpdateBranchError(null);
+
+    try {
+      await window.githubg.updatePullRequestBranch(pullRequest.id);
+      await onPullRequestChanged?.();
+    } catch (error) {
+      setUpdateBranchError(error instanceof Error ? error.message : 'Update branch failed.');
+    } finally {
+      setIsUpdatingBranch(false);
+    }
+  };
+
+  const handleRerunChecks = async (): Promise<void> => {
+    setIsRerunning(true);
+    setRerunError(null);
+
+    try {
+      await window.githubg.rerunPullRequestWorkflowRuns(
+        pullRequest.repositoryNameWithOwner,
+        pullRequest.actionWorkflowRuns.map((run) => run.id),
+        rerunMode,
+      );
+      await onPullRequestChanged?.();
+    } catch (error) {
+      setRerunError(error instanceof Error ? error.message : 'Rerun failed.');
+    } finally {
+      setIsRerunning(false);
+    }
+  };
+
   return (
-    <article className={`pr-card pr-card--${tone}${hasRunningAction ? ' pr-card--action-running' : ''}`}>
+    <article
+      ref={cardRef}
+      className={`pr-card pr-card--${tone}${hasRunningAction ? ' pr-card--action-running' : ''}${
+        highlighted ? ' pr-card--highlighted' : ''
+      }`}
+    >
       <header className="pr-card-header">
         <button
           type="button"
@@ -233,27 +379,63 @@ export const PullRequestCard = ({ pullRequest }: PullRequestCardProps): JSX.Elem
               </button>
             ) : null}
             {showMergeControls ? (
-              <>
-                <label>
-                  <span>Method</span>
-                  <select
-                    value={mergeMethod}
-                    onChange={(event) => handleMergeMethodChange(event.target.value as MergeMethod)}
-                  >
-                    {mergeMethods.map((method) => (
-                      <option key={method} value={method}>
-                        {method.toLowerCase()}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button type="button" className="merge-button" disabled={!canMerge} onClick={handleMerge}>
-                  {isMerging ? 'Merging' : 'Merge'}
-                </button>
-              </>
+              <MultiStateActionButton
+                ariaLabel="Merge pull request"
+                disabled={!canMerge}
+                loading={isMerging}
+                loadingLabel="Merging"
+                onAction={handleMerge}
+                onValueChange={handleMergeMethodChange}
+                options={mergeMethodOptions}
+                selectionDisabled={isMerging}
+                tone="accent"
+                value={mergeMethod}
+              />
+            ) : null}
+            {approvedBlockedReason === 'failed-checks' && pullRequest.actionWorkflowRuns.length > 0 ? (
+              <MultiStateActionButton
+                ariaLabel="Rerun workflow jobs"
+                disabled={!canRerunChecks}
+                leadingIcon={
+                  isRerunning ? (
+                    <RefreshCw
+                      className="refresh-icon refresh-icon--spinning"
+                      size={15}
+                      strokeWidth={2.2}
+                    />
+                  ) : null
+                }
+                loading={isRerunning}
+                loadingLabel="Rerunning"
+                onAction={handleRerunChecks}
+                onValueChange={setRerunMode}
+                options={rerunModeOptions}
+                selectionDisabled={isRerunning}
+                tone="neutral"
+                value={rerunMode}
+              />
+            ) : null}
+            {approvedBlockedReason === 'out-of-date' ? (
+              <button
+                type="button"
+                className="review-request-button update-branch-button"
+                disabled={!canUpdateBranch}
+                onClick={handleUpdateBranch}
+              >
+                {isUpdatingBranch ? (
+                  <RefreshCw
+                    className="refresh-icon refresh-icon--spinning"
+                    size={15}
+                    strokeWidth={2.2}
+                  />
+                ) : null}
+                <span>{isUpdatingBranch ? 'Updating' : 'Update Branch'}</span>
+              </button>
             ) : null}
             {mergeError ? <p className="merge-error">{mergeError}</p> : null}
             {reviewRequestError ? <p className="merge-error">{reviewRequestError}</p> : null}
+            {updateBranchError ? <p className="merge-error">{updateBranchError}</p> : null}
+            {rerunError ? <p className="merge-error">{rerunError}</p> : null}
           </div>
         </div>
       ) : null}

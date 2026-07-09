@@ -1,6 +1,10 @@
 import { app, BrowserWindow } from 'electron';
 import { join } from 'node:path';
-import type { PullRequestSummary } from '../shared/pullRequest';
+import {
+  getApprovedPullRequestBlockedReason,
+  hasPullRequestConflicts,
+  type PullRequestSummary,
+} from '../shared/pullRequest';
 
 type AppIconColor = 'red' | 'green' | 'light-blue' | 'white';
 
@@ -24,6 +28,20 @@ const hasUnaddressedRequestedChanges = (pullRequest: PullRequestSummary): boolea
 };
 
 const getIconColor = (pullRequests: PullRequestSummary[]): AppIconColor => {
+  if (
+    pullRequests.some((pullRequest) => {
+      const approvedBlockedReason = getApprovedPullRequestBlockedReason(pullRequest);
+
+      return (
+        hasPullRequestConflicts(pullRequest) ||
+        approvedBlockedReason === 'failed-checks' ||
+        approvedBlockedReason === 'out-of-date'
+      );
+    })
+  ) {
+    return 'red';
+  }
+
   if (pullRequests.some(hasUnaddressedRequestedChanges)) {
     return 'red';
   }

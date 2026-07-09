@@ -1,5 +1,6 @@
+import type { JiraAuthState, JiraCredentials, JiraTicketSummary } from '../../shared/jira';
 import type { GithubgSettings, MergeMethod, TeamMember, ThemeId } from '../../shared/settings';
-import type { PullRequestSummary } from '../../shared/pullRequest';
+import type { PullRequestRerunMode, PullRequestSummary } from '../../shared/pullRequest';
 
 declare global {
   interface Window {
@@ -7,6 +8,11 @@ declare global {
       appName: string;
       getSettings: () => Promise<GithubgSettings>;
       setTheme: (theme: ThemeId) => Promise<GithubgSettings>;
+      getJiraAuthState: () => Promise<JiraAuthState>;
+      getJiraCredentials: () => Promise<JiraCredentials>;
+      saveJiraCredentials: (credentials: JiraCredentials) => Promise<JiraAuthState>;
+      disconnectJira: () => Promise<JiraAuthState>;
+      listJiraTickets: () => Promise<JiraTicketSummary[]>;
       listOpenPullRequests: () => Promise<PullRequestSummary[]>;
       listReviewPullRequests: () => Promise<PullRequestSummary[]>;
       listKnownUsers: () => Promise<TeamMember[]>;
@@ -17,6 +23,12 @@ declare global {
       setMergeMethod: (pullRequestId: string, mergeMethod: MergeMethod) => Promise<MergeMethod>;
       mergePullRequest: (pullRequestId: string, mergeMethod: MergeMethod) => Promise<void>;
       requestPullRequestReview: (pullRequestId: string, userIds: string[]) => Promise<void>;
+      updatePullRequestBranch: (pullRequestId: string) => Promise<void>;
+      rerunPullRequestWorkflowRuns: (
+        repositoryNameWithOwner: string,
+        runIds: number[],
+        mode: PullRequestRerunMode,
+      ) => Promise<void>;
     };
   }
 }

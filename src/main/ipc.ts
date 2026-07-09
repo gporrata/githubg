@@ -1,4 +1,6 @@
 import { ipcMain } from 'electron';
+import type { JiraAuthState, JiraCredentials, JiraTicketSummary } from '../shared/jira';
+import type { PullRequestRerunMode } from '../shared/pullRequest';
 import type { GithubgSettings, MergeMethod, TeamMember, ThemeId } from '../shared/settings';
 import { mergeMethods, themeOptions } from '../shared/settings';
 import { setOpenPullRequestBadge } from './badge';
@@ -8,7 +10,16 @@ import {
   fetchOpenPullRequestsForTeamMembers,
   fetchOpenPullRequestsForViewer,
   requestPullRequestReview,
+  rerunPullRequestWorkflowRuns,
+  updatePullRequestBranch,
 } from './github/pullRequests';
+import {
+  disconnectJira,
+  fetchJiraTickets,
+  getJiraAuthState,
+  getJiraCredentials,
+  saveJiraCredentials,
+} from './jira';
 import { getAppStore } from './store';
 
 const isMergeMethod = (value: unknown): value is MergeMethod =>
@@ -16,6 +27,9 @@ const isMergeMethod = (value: unknown): value is MergeMethod =>
 
 const isThemeId = (value: unknown): value is ThemeId =>
   typeof value === 'string' && themeOptions.includes(value as ThemeId);
+
+const isPullRequestRerunMode = (value: unknown): value is PullRequestRerunMode =>
+  value === 'failed' || value === 'all';
 
 export const registerIpcHandlers = (): void => {
   ipcMain.handle('settings:get', (): GithubgSettings => {
@@ -32,6 +46,20 @@ export const registerIpcHandlers = (): void => {
     store.set('settings', settings);
     return settings;
   });
+
+  ipcMain.handle('jira:auth-state', (): JiraAuthState => getJiraAuthState());
+
+  ipcMain.handle('jira:credentials:get', (): JiraCredentials => getJiraCredentials());
+
+  ipcMain.handle(
+    'jira:credentials:save',
+    (_event, credentials: JiraCredentials): Promise<JiraAuthState> =>
+      saveJiraCredentials(credentials),
+  );
+
+  ipcMain.handle('jira:disconnect', (): JiraAuthState => disconnectJira());
+
+  ipcMain.handle('jira:tickets:list', (): Promise<JiraTicketSummary[]> => fetchJiraTickets());
 
   ipcMain.handle('known-users:list', () => fetchKnownUsers());
 
@@ -101,6 +129,29 @@ export const registerIpcHandlers = (): void => {
     'pull-request:request-review',
     async (_event, pullRequestId: string, userIds: string[]): Promise<void> => {
       await requestPullRequestReview(pullRequestId, userIds);
+    },
+  );
+
+  ipcMain.handle(
+    'pull-request:update-branch',
+    async (_event, pullRequestId: string): Promise<void> => {
+      await updatePullRequestBranch(pullRequestId);
+    },
+  );
+
+  ipcMain.handle(
+    'pull-request:rerun-workflow-runs',
+    async (
+      _event,
+      repositoryNameWithOwner: string,
+      runIds: number[],
+      mode: PullRequestRerunMode,
+    ): Promise<void> => {
+      if (!isPullRequestRerunMode(mode)) {
+        throw new Error(`Invalid rerun mode: ${String(mode)}`);
+      }
+
+      await rerunPullRequestWorkflowRuns(repositoryNameWithOwner, runIds, mode);
     },
   );
 };

@@ -6,9 +6,17 @@ import type {
   TeamMember,
 } from '../shared/settings';
 
+export type JiraCredentialState = {
+  siteUrl: string;
+  email: string;
+  apiToken: string;
+  cloudId: string;
+};
+
 export type AppStoreSchema = {
   teamMembers: TeamMember[];
   settings: GithubgSettings;
+  jiraCredentials: JiraCredentialState | null;
   mergedPullRequests: Record<string, MergedPullRequestTracking>;
   mergeMethods: Record<string, MergeMethod>;
 };
@@ -32,8 +40,18 @@ export const getAppStore = (): ElectronStore<AppStoreSchema> => {
     defaults: {
       teamMembers: [],
       settings: defaultSettings,
+      jiraCredentials: null,
       mergedPullRequests: {},
       mergeMethods: {},
+    },
+    migrations: {
+      '>=0.1.0': (store) => {
+        const settings = store.get('settings') as Partial<GithubgSettings> | undefined;
+        store.set('settings', {
+          theme: settings?.theme ?? defaultSettings.theme,
+          pollIntervalMs: settings?.pollIntervalMs ?? defaultSettings.pollIntervalMs,
+        });
+      },
     },
     schema: {
       teamMembers: {
@@ -67,6 +85,23 @@ export const getAppStore = (): ElectronStore<AppStoreSchema> => {
             default: defaultSettings.pollIntervalMs,
           },
         },
+      },
+      jiraCredentials: {
+        anyOf: [
+          { type: 'null' },
+          {
+            type: 'object',
+            required: ['siteUrl', 'email', 'apiToken', 'cloudId'],
+            additionalProperties: false,
+            properties: {
+              siteUrl: { type: 'string' },
+              email: { type: 'string' },
+              apiToken: { type: 'string' },
+              cloudId: { type: 'string' },
+            },
+          },
+        ],
+        default: null,
       },
       mergedPullRequests: {
         type: 'object',

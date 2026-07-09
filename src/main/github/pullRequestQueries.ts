@@ -291,9 +291,27 @@ export type RequestReviewsResponse = {
   } | null;
 };
 
+export type UpdatePullRequestBranchResponse = {
+  updatePullRequestBranch: {
+    pullRequest: {
+      id: string;
+    } | null;
+  } | null;
+};
+
 export const REQUEST_REVIEWS_MUTATION = `
   mutation RequestReviews($pullRequestId: ID!, $userIds: [ID!]) {
     requestReviews(input: { pullRequestId: $pullRequestId, userIds: $userIds, union: true }) {
+      pullRequest {
+        id
+      }
+    }
+  }
+`;
+
+export const UPDATE_PULL_REQUEST_BRANCH_MUTATION = `
+  mutation UpdatePullRequestBranch($pullRequestId: ID!) {
+    updatePullRequestBranch(input: { pullRequestId: $pullRequestId }) {
       pullRequest {
         id
       }
