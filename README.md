@@ -59,7 +59,7 @@ assigned to the connected account. Disconnect Jira from the Jira tab to remove
 the stored credentials.
 
 The Jira tab shows current-sprint tickets whose status is Ready, In Progress,
-Waiting for Review, Needs Validation, In Validation, Failed Validation, Blocked,
-or Done. It discovers common sprint and story point fields from Jira metadata
-when possible. Open GitHub PRs are linked to tickets by matching the Jira key in
-the branch name or PR title.
+Waiting for Review, Waiting for Peer Review, Needs Validation, In Validation,
+Failed Validation, Blocked, or Done. It discovers common sprint and story point
+fields from Jira metadata when possible. Open GitHub PRs are linked to tickets by
+matching the Jira key in the branch name or PR title.

@@ -2,6 +2,7 @@ export const jiraTicketStatuses = [
   'Ready',
   'In Progress',
   'Waiting for Review',
+  'Waiting for Peer Review',
   'Needs Validation',
   'In Validation',
   'Failed Validation',

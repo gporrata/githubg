@@ -42,11 +42,23 @@ type JiraIssue = {
 };
 
 type JiraSprintFieldValue = {
+  id?: unknown;
   name?: unknown;
   state?: unknown;
+  startDate?: unknown;
+  endDate?: unknown;
+};
+
+type JiraSprintSummary = {
+  id: number | null;
+  name: string;
+  state: string | null;
+  startDate: string | null;
+  endDate: string | null;
 };
 
 type JiraMappedIssue = JiraTicketSummary & {
+  sprints: JiraSprintSummary[];
   hasActiveSprint: boolean;
 };
 
@@ -191,9 +203,7 @@ export const getJiraCredentials = (): JiraCredentials => {
       };
 };
 
-export const saveJiraCredentials = async (
-  credentials: JiraCredentials,
-): Promise<JiraAuthState> => {
+export const saveJiraCredentials = async (credentials: JiraCredentials): Promise<JiraAuthState> => {
   const normalizedCredentials = normalizeCredentialInput(credentials);
   const credentialState = {
     ...normalizedCredentials,
@@ -238,81 +248,222 @@ const extractDocumentText = (value: unknown): string => {
 const extractPoints = (value: unknown): number | null =>
   typeof value === 'number' && Number.isFinite(value) ? value : null;
 
-const extractSprint = (value: unknown): string | null => {
-  if (Array.isArray(value)) {
-    const activeSprint =
-      value.find(
-        (item): item is JiraSprintFieldValue =>
-          Boolean(item) &&
-          typeof item === 'object' &&
-          'state' in item &&
-          typeof item.state === 'string' &&
-          item.state.toLowerCase() === 'active',
-      ) ?? value.at(-1);
+const extractStringProperty = (
+  value: unknown,
+  property: keyof JiraSprintFieldValue,
+): string | null =>
+  value && typeof value === 'object' && property in value && typeof value[property] === 'string'
+    ? value[property]
+    : null;
 
-    return activeSprint &&
-      typeof activeSprint === 'object' &&
-      'name' in activeSprint &&
-      typeof activeSprint.name === 'string'
-      ? activeSprint.name
-      : null;
+const extractNumberProperty = (
+  value: unknown,
+  property: keyof JiraSprintFieldValue,
+): number | null => {
+  if (!value || typeof value !== 'object' || !(property in value)) {
+    return null;
   }
 
-  if (value && typeof value === 'object' && 'name' in value && typeof value.name === 'string') {
-    return value.name;
+  const propertyValue = value[property];
+
+  if (typeof propertyValue === 'number' && Number.isFinite(propertyValue)) {
+    return propertyValue;
+  }
+
+  if (typeof propertyValue === 'string') {
+    const parsedValue = Number.parseInt(propertyValue, 10);
+    return Number.isFinite(parsedValue) ? parsedValue : null;
   }
 
   return null;
 };
 
-const hasActiveSprint = (value: unknown): boolean =>
-  Array.isArray(value) &&
-  value.some(
-    (item): item is JiraSprintFieldValue =>
-      Boolean(item) &&
-      typeof item === 'object' &&
-      'state' in item &&
-      typeof item.state === 'string' &&
-      item.state.toLowerCase() === 'active',
+const parseLegacySprintField = (value: string): JiraSprintSummary | null => {
+  const extractLegacyValue = (property: string): string | null => {
+    const match = value.match(new RegExp(`(?:^|[,[ ])${property}=([^,\\]]+)`));
+    return match?.[1] ?? null;
+  };
+
+  const name = extractLegacyValue('name');
+
+  if (!name) {
+    return null;
+  }
+
+  const id = extractLegacyValue('id');
+  const parsedId = id ? Number.parseInt(id, 10) : Number.NaN;
+
+  return {
+    id: Number.isFinite(parsedId) ? parsedId : null,
+    name,
+    state: extractLegacyValue('state'),
+    startDate: extractLegacyValue('startDate'),
+    endDate: extractLegacyValue('endDate'),
+  };
+};
+
+const extractSprintSummaries = (value: unknown): JiraSprintSummary[] => {
+  if (Array.isArray(value)) {
+    return value.flatMap(extractSprintSummaries);
+  }
+
+  if (typeof value === 'string') {
+    const sprint = parseLegacySprintField(value);
+    return sprint ? [sprint] : [];
+  }
+
+  const name = extractStringProperty(value, 'name');
+
+  return name
+    ? [
+        {
+          id: extractNumberProperty(value, 'id'),
+          name,
+          state: extractStringProperty(value, 'state'),
+          startDate: extractStringProperty(value, 'startDate'),
+          endDate: extractStringProperty(value, 'endDate'),
+        },
+      ]
+    : [];
+};
+
+const isActiveSprint = (sprint: JiraSprintSummary): boolean =>
+  sprint.state?.toLowerCase() === 'active';
+
+const extractSprint = (sprints: JiraSprintSummary[]): string | null =>
+  (sprints.find(isActiveSprint) ?? sprints.at(-1))?.name ?? null;
+
+const hasActiveSprint = (sprints: JiraSprintSummary[]): boolean => sprints.some(isActiveSprint);
+
+const parseJiraDate = (value: string | null): number | null => {
+  if (!value) {
+    return null;
+  }
+
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? timestamp : null;
+};
+
+const extractLastNumber = (value: string): number | null => {
+  const matches = value.match(/\d+/g);
+  const lastMatch = matches?.at(-1);
+  return lastMatch ? Number.parseInt(lastMatch, 10) : null;
+};
+
+const compareNullableNumbers = (left: number | null, right: number | null): number => {
+  if (left === null && right === null) {
+    return 0;
+  }
+
+  if (left === null) {
+    return -1;
+  }
+
+  if (right === null) {
+    return 1;
+  }
+
+  return left - right;
+};
+
+const compareSprintRecency = (left: JiraSprintSummary, right: JiraSprintSummary): number => {
+  const dateComparison = compareNullableNumbers(
+    parseJiraDate(left.endDate) ?? parseJiraDate(left.startDate),
+    parseJiraDate(right.endDate) ?? parseJiraDate(right.startDate),
   );
+
+  if (dateComparison !== 0) {
+    return dateComparison;
+  }
+
+  const idComparison = compareNullableNumbers(left.id, right.id);
+
+  if (idComparison !== 0) {
+    return idComparison;
+  }
+
+  const nameNumberComparison = compareNullableNumbers(
+    extractLastNumber(left.name),
+    extractLastNumber(right.name),
+  );
+
+  if (nameNumberComparison !== 0) {
+    return nameNumberComparison;
+  }
+
+  return left.name.localeCompare(right.name);
+};
+
+const selectCurrentSprintName = (issues: JiraMappedIssue[]): string | null => {
+  const activeSprintsByName = new Map<string, JiraSprintSummary>();
+
+  for (const issue of issues) {
+    for (const sprint of issue.sprints.filter(isActiveSprint)) {
+      const existingSprint = activeSprintsByName.get(sprint.name);
+
+      if (!existingSprint || compareSprintRecency(existingSprint, sprint) < 0) {
+        activeSprintsByName.set(sprint.name, sprint);
+      }
+    }
+  }
+
+  return Array.from(activeSprintsByName.values()).sort(compareSprintRecency).at(-1)?.name ?? null;
+};
 
 const mapIssue = (
   issue: JiraIssue,
   siteUrl: string,
   sprintFieldId: string | null,
   pointsFieldId: string | null,
-): JiraMappedIssue => ({
-  id: issue.id,
-  key: issue.key,
-  summary: typeof issue.fields.summary === 'string' ? issue.fields.summary : issue.key,
-  description: extractDocumentText(issue.fields.description),
-  url: `${siteUrl}/browse/${issue.key}`,
-  status:
-    typeof issue.fields.status?.name === 'string'
-      ? (issue.fields.status.name as JiraTicketStatus | string)
-      : 'Unknown',
-  sprint: sprintFieldId ? extractSprint(issue.fields[sprintFieldId]) : null,
-  hasActiveSprint: sprintFieldId ? hasActiveSprint(issue.fields[sprintFieldId]) : false,
-  points: pointsFieldId ? extractPoints(issue.fields[pointsFieldId]) : null,
-  openPullRequests: [],
-});
+): JiraMappedIssue => {
+  const sprints = sprintFieldId ? extractSprintSummaries(issue.fields[sprintFieldId]) : [];
 
-const shouldShowIssue = (issue: JiraMappedIssue): boolean => {
+  return {
+    id: issue.id,
+    key: issue.key,
+    summary: typeof issue.fields.summary === 'string' ? issue.fields.summary : issue.key,
+    description: extractDocumentText(issue.fields.description),
+    url: `${siteUrl}/browse/${issue.key}`,
+    status:
+      typeof issue.fields.status?.name === 'string'
+        ? (issue.fields.status.name as JiraTicketStatus | string)
+        : 'Unknown',
+    sprint: extractSprint(sprints),
+    sprints,
+    hasActiveSprint: hasActiveSprint(sprints),
+    points: pointsFieldId ? extractPoints(issue.fields[pointsFieldId]) : null,
+    openPullRequests: [],
+  };
+};
+
+const issueIsInSprint = (issue: JiraMappedIssue, sprintName: string): boolean =>
+  issue.sprints.some((sprint) => sprint.name === sprintName);
+
+const shouldShowIssue = (issue: JiraMappedIssue, currentSprintName: string | null): boolean => {
+  if (currentSprintName && !issueIsInSprint(issue, currentSprintName)) {
+    return false;
+  }
+
   if (issue.status !== 'Done') {
     return true;
   }
 
-  return issue.hasActiveSprint;
+  return currentSprintName
+    ? issue.sprints.some((sprint) => sprint.name === currentSprintName && isActiveSprint(sprint))
+    : issue.hasActiveSprint;
 };
 
-const toTicketSummary = (issue: JiraMappedIssue): JiraTicketSummary => ({
+const toTicketSummary = (
+  issue: JiraMappedIssue,
+  currentSprintName: string | null,
+): JiraTicketSummary => ({
   id: issue.id,
   key: issue.key,
   summary: issue.summary,
   description: issue.description,
   url: issue.url,
   status: issue.status,
-  sprint: issue.sprint,
+  sprint: currentSprintName ?? issue.sprint,
   points: issue.points,
   openPullRequests: issue.openPullRequests,
 });
@@ -347,8 +498,12 @@ export const fetchJiraTickets = async (): Promise<JiraTicketSummary[]> => {
     },
   );
 
-  return response.issues
-    .map((issue) => mapIssue(issue, credentials.siteUrl, sprintFieldId, pointsFieldId))
-    .filter(shouldShowIssue)
-    .map(toTicketSummary);
+  const mappedIssues = response.issues.map((issue) =>
+    mapIssue(issue, credentials.siteUrl, sprintFieldId, pointsFieldId),
+  );
+  const currentSprintName = selectCurrentSprintName(mappedIssues);
+
+  return mappedIssues
+    .filter((issue) => shouldShowIssue(issue, currentSprintName))
+    .map((issue) => toTicketSummary(issue, currentSprintName));
 };
