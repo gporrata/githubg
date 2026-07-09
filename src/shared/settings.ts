@@ -19,15 +19,7 @@ export type MergedPullRequestTracking = {
   workflowCompletedAt?: string;
 };
 
-export type JiraAppSettings = {
-  clientId: string;
-  clientSecret: string;
-  projectKey: string;
-  siteUrl: string;
-};
-
 export type GithubgSettings = {
   theme: ThemeId;
   pollIntervalMs: number;
-  jira: JiraAppSettings;
 };

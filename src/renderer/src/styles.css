@@ -263,6 +263,69 @@ h2 {
   gap: 12px;
 }
 
+.jira-auth-panel {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 14px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.jira-auth-heading {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.jira-auth-heading h3 {
+  margin: 0 0 4px;
+}
+
+.jira-auth-heading p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.4;
+}
+
+.jira-auth-grid {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) minmax(220px, 1.2fr) auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.jira-token-field {
+  min-width: 0;
+}
+
+.jira-token-input {
+  position: relative;
+  display: block;
+}
+
+.jira-token-input input {
+  width: 100%;
+  padding-right: 36px;
+}
+
+.jira-token-input svg {
+  position: absolute;
+  right: 10px;
+  top: 11px;
+  color: var(--muted);
+}
+
+.field-error {
+  color: var(--danger);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  text-transform: none;
+}
+
 .jira-card {
   display: grid;
   border: 1px solid var(--border);
@@ -839,6 +902,7 @@ h3 {
   border: 1px solid var(--border-strong);
   border-radius: 8px;
   cursor: pointer;
+  text-decoration: none;
 }
 
 .secondary-button:hover {
@@ -965,5 +1029,13 @@ h3 {
 
   .jira-facts {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .jira-auth-heading {
+    display: grid;
+  }
+
+  .jira-auth-grid {
+    grid-template-columns: 1fr;
   }
 }

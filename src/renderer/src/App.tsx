@@ -2,8 +2,8 @@ import { ExternalLink, Plus, RefreshCw, Settings } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   JiraAuthState,
+  JiraCredentials,
   JiraPullRequestLink,
-  JiraSettings,
   JiraTicketSummary,
 } from '../../shared/jira';
 import type { PullRequestSummary } from '../../shared/pullRequest';
@@ -20,16 +20,21 @@ const tabs: Array<{ id: TabId; label: string }> = [
   { id: 'jira', label: 'Jira' },
 ];
 
-const emptyJiraSettings: JiraSettings = {
-  clientId: '',
-  clientSecret: '',
-  projectKey: '',
+const atlassianApiTokenUrl = 'https://id.atlassian.com/manage-profile/security/api-tokens';
+
+const emptyJiraCredentials: JiraCredentials = {
   siteUrl: '',
+  email: '',
+  apiToken: '',
 };
 
 const formatJiraAuthState = (authState: JiraAuthState | null): string => {
   if (!authState?.isAuthenticated) {
     return 'Not connected';
+  }
+
+  if (authState.email && authState.siteUrl) {
+    return `Connected as ${authState.email} to ${authState.siteUrl}`;
   }
 
   return authState.siteUrl ? `Connected to ${authState.siteUrl}` : 'Connected';
@@ -65,8 +70,11 @@ export const App = (): JSX.Element => {
   const [isJiraRefreshing, setIsJiraRefreshing] = useState(false);
   const [jiraLoadError, setJiraLoadError] = useState<string | null>(null);
   const [jiraAuthState, setJiraAuthState] = useState<JiraAuthState | null>(null);
-  const [jiraSettings, setJiraSettings] = useState<JiraSettings>(emptyJiraSettings);
-  const [jiraRedirectUri, setJiraRedirectUri] = useState('');
+  const [jiraCredentials, setJiraCredentials] =
+    useState<JiraCredentials>(emptyJiraCredentials);
+  const [jiraTokenError, setJiraTokenError] = useState<string | null>(null);
+  const [isJiraVerifying, setIsJiraVerifying] = useState(false);
+  const [verifiedJiraCredentialsKey, setVerifiedJiraCredentialsKey] = useState<string | null>(null);
   const [highlightedPullRequestId, setHighlightedPullRequestId] = useState<string | null>(null);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
   const [knownUsers, setKnownUsers] = useState<TeamMember[]>([]);
@@ -79,15 +87,22 @@ export const App = (): JSX.Element => {
   const [nextRefreshAtMs, setNextRefreshAtMs] = useState(() => Date.now() + 120_000);
   const hasLoadedPullRequests = useRef(false);
   const hasLoadedJiraTickets = useRef(false);
+  const hasLoadedJiraCredentials = useRef(false);
   const refreshInFlight = useRef(false);
   const jiraRefreshInFlight = useRef(false);
   const activePullRequests = activeTab === 'open-prs' ? openPullRequests : reviewPullRequests;
-  const isJiraSettingsComplete = Boolean(
-    jiraSettings.clientId.trim() &&
-      jiraSettings.clientSecret.trim() &&
-      jiraSettings.siteUrl.trim() &&
-      jiraSettings.projectKey.trim(),
+  const jiraCredentialsKey = [
+    jiraCredentials.siteUrl.trim().replace(/\/+$/, ''),
+    jiraCredentials.email.trim(),
+    jiraCredentials.apiToken.trim(),
+  ].join('|');
+  const isJiraCredentialsComplete = Boolean(
+    jiraCredentials.siteUrl.trim() &&
+      jiraCredentials.email.trim() &&
+      jiraCredentials.apiToken.trim(),
   );
+  const isJiraConnected =
+    Boolean(jiraAuthState?.isAuthenticated) && verifiedJiraCredentialsKey === jiraCredentialsKey;
   const linkedPullRequests = [...openPullRequests, ...reviewPullRequests].filter(
     (pullRequest, index, pullRequests) =>
       pullRequest.state === 'OPEN' &&
@@ -181,18 +196,27 @@ export const App = (): JSX.Element => {
     let isCurrent = true;
 
     const loadSettings = async (): Promise<void> => {
-      const [settings, authState, redirectUri] = await Promise.all([
+      const [settings, authState, credentials] = await Promise.all([
         window.githubg.getSettings(),
         window.githubg.getJiraAuthState(),
-        window.githubg.getJiraRedirectUri(),
+        window.githubg.getJiraCredentials(),
       ]);
 
       if (isCurrent) {
         setTheme(settings.theme);
         setPollIntervalMs(settings.pollIntervalMs);
-        setJiraSettings(settings.jira);
+        setJiraCredentials(credentials);
         setJiraAuthState(authState);
-        setJiraRedirectUri(redirectUri);
+        setVerifiedJiraCredentialsKey(
+          authState.isAuthenticated
+            ? [
+                credentials.siteUrl.trim().replace(/\/+$/, ''),
+                credentials.email.trim(),
+                credentials.apiToken.trim(),
+              ].join('|')
+            : null,
+        );
+        hasLoadedJiraCredentials.current = true;
       }
     };
 
@@ -216,10 +240,79 @@ export const App = (): JSX.Element => {
   }, [pollIntervalMs, refreshPullRequests]);
 
   useEffect(() => {
-    if (activeTab === 'jira' && !hasLoadedJiraTickets.current) {
+    if (activeTab === 'jira' && isJiraConnected && !hasLoadedJiraTickets.current) {
       void refreshJiraTickets();
     }
-  }, [activeTab, refreshJiraTickets]);
+  }, [activeTab, isJiraConnected, refreshJiraTickets]);
+
+  useEffect(() => {
+    if (!hasLoadedJiraCredentials.current) {
+      return;
+    }
+
+    if (!isJiraCredentialsComplete) {
+      setJiraTokenError(null);
+      setVerifiedJiraCredentialsKey(null);
+      setJiraTickets([]);
+      hasLoadedJiraTickets.current = false;
+      return;
+    }
+
+    if (verifiedJiraCredentialsKey === jiraCredentialsKey) {
+      return;
+    }
+
+    let isCurrent = true;
+    const timeoutId = window.setTimeout(() => {
+      const verifyCredentials = async (): Promise<void> => {
+        setIsJiraVerifying(true);
+        setJiraTokenError(null);
+
+        try {
+          const authState = await window.githubg.saveJiraCredentials(jiraCredentials);
+
+          if (!isCurrent) {
+            return;
+          }
+
+          setJiraAuthState(authState);
+          setVerifiedJiraCredentialsKey(jiraCredentialsKey);
+          hasLoadedJiraTickets.current = false;
+
+          if (activeTab === 'jira') {
+            await refreshJiraTickets();
+          }
+        } catch (error) {
+          if (isCurrent) {
+            setJiraTokenError(
+              error instanceof Error ? error.message : 'Unable to verify Jira access.',
+            );
+            setVerifiedJiraCredentialsKey(null);
+            setJiraTickets([]);
+            hasLoadedJiraTickets.current = false;
+          }
+        } finally {
+          if (isCurrent) {
+            setIsJiraVerifying(false);
+          }
+        }
+      };
+
+      void verifyCredentials();
+    }, 700);
+
+    return () => {
+      isCurrent = false;
+      window.clearTimeout(timeoutId);
+    };
+  }, [
+    activeTab,
+    isJiraCredentialsComplete,
+    jiraCredentials,
+    jiraCredentialsKey,
+    refreshJiraTickets,
+    verifiedJiraCredentialsKey,
+  ]);
 
   useEffect(() => {
     if (!isTeamModalOpen) {
@@ -266,25 +359,15 @@ export const App = (): JSX.Element => {
     setTheme(settings.theme);
   };
 
-  const handleJiraSettingChange = (field: keyof JiraSettings, value: string): void => {
-    setJiraSettings((settings) => ({ ...settings, [field]: value }));
-  };
-
-  const handleSaveJiraSettings = async (): Promise<void> => {
-    const settings = await window.githubg.setJiraSettings(jiraSettings);
-    setJiraSettings(settings.jira);
-    setJiraAuthState(await window.githubg.getJiraAuthState());
-  };
-
-  const handleAuthenticateJira = async (): Promise<void> => {
-    await handleSaveJiraSettings();
-    setJiraAuthState(await window.githubg.connectJira());
-    hasLoadedJiraTickets.current = false;
-    void refreshJiraTickets();
+  const handleJiraCredentialChange = (field: keyof JiraCredentials, value: string): void => {
+    setJiraCredentials((credentials) => ({ ...credentials, [field]: value }));
   };
 
   const handleDisconnectJira = async (): Promise<void> => {
     setJiraAuthState(await window.githubg.disconnectJira());
+    setJiraCredentials(emptyJiraCredentials);
+    setVerifiedJiraCredentialsKey(null);
+    setJiraTokenError(null);
     setJiraTickets([]);
     hasLoadedJiraTickets.current = false;
   };
@@ -345,19 +428,93 @@ export const App = (): JSX.Element => {
                 </div>
                 <span className="count-pill">{jiraTicketsWithPullRequests.length}</span>
               </div>
-              {!isJiraSettingsComplete || !jiraAuthState?.isAuthenticated ? (
+
+              <div className="jira-auth-panel">
+                <div className="jira-auth-heading">
+                  <div>
+                    <h3>Jira access</h3>
+                    <p>Create an Atlassian API token, then paste it here.</p>
+                  </div>
+                  <a
+                    className="secondary-button"
+                    href={atlassianApiTokenUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <ExternalLink size={15} strokeWidth={2.2} />
+                    API tokens
+                  </a>
+                </div>
+
+                <div className="jira-auth-grid">
+                  <label className="settings-field">
+                    <span>Jira URL</span>
+                    <input
+                      type="url"
+                      value={jiraCredentials.siteUrl}
+                      placeholder="https://[your company].jira.com"
+                      onChange={(event) =>
+                        handleJiraCredentialChange('siteUrl', event.target.value)
+                      }
+                    />
+                  </label>
+                  <label className="settings-field">
+                    <span>Email</span>
+                    <input
+                      type="email"
+                      value={jiraCredentials.email}
+                      onChange={(event) =>
+                        handleJiraCredentialChange('email', event.target.value)
+                      }
+                    />
+                  </label>
+                  <label className="settings-field jira-token-field">
+                    <span>API token</span>
+                    <span className="jira-token-input">
+                      <input
+                        type="password"
+                        value={jiraCredentials.apiToken}
+                        onChange={(event) =>
+                          handleJiraCredentialChange('apiToken', event.target.value)
+                        }
+                      />
+                      {isJiraVerifying ? (
+                        <RefreshCw
+                          className="refresh-icon refresh-icon--spinning"
+                          size={16}
+                          strokeWidth={2.2}
+                        />
+                      ) : null}
+                    </span>
+                    {jiraTokenError ? <span className="field-error">{jiraTokenError}</span> : null}
+                  </label>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    disabled={!jiraAuthState?.isAuthenticated}
+                    onClick={() => void handleDisconnectJira()}
+                  >
+                    Disconnect
+                  </button>
+                </div>
+              </div>
+
+              {!isJiraCredentialsComplete ? (
                 <div className="empty-list empty-list--setup">
                   <div className="setup-state">
                     <strong>Jira is not connected.</strong>
-                    <span>Configure Jira settings, then grant access.</span>
-                    <button
-                      type="button"
-                      className="primary-button"
-                      disabled={!isJiraSettingsComplete}
-                      onClick={() => void handleAuthenticateJira()}
-                    >
-                      Grant Jira access
-                    </button>
+                    <span>Enter your Jira URL, email, and API token to verify access.</span>
+                  </div>
+                </div>
+              ) : !isJiraConnected ? (
+                <div className="empty-list empty-list--setup">
+                  <div className="setup-state">
+                    <strong>{isJiraVerifying ? 'Verifying Jira access.' : 'Jira is not connected.'}</strong>
+                    <span>
+                      {jiraTokenError
+                        ? 'Fix the token or account details above.'
+                        : 'Tickets will load after the token is verified.'}
+                    </span>
                   </div>
                 </div>
               ) : jiraLoadError ? (
@@ -426,7 +583,7 @@ export const App = (): JSX.Element => {
             className="icon-button"
             title="Refresh pull requests"
             aria-label="Refresh pull requests"
-            disabled={activeTab === 'jira' ? isJiraRefreshing : isRefreshing}
+            disabled={activeTab === 'jira' ? isJiraRefreshing || !isJiraConnected : isRefreshing}
             aria-busy={activeTab === 'jira' ? isJiraRefreshing : isRefreshing}
             onClick={handleRefresh}
           >
@@ -539,75 +696,6 @@ export const App = (): JSX.Element => {
                 ))}
               </select>
             </label>
-
-            <div className="settings-divider" />
-
-            <div className="settings-stack">
-              <label className="settings-field">
-                <span>Jira site URL</span>
-                <input
-                  type="url"
-                  value={jiraSettings.siteUrl}
-                  placeholder="https://example.atlassian.net"
-                  onChange={(event) => handleJiraSettingChange('siteUrl', event.target.value)}
-                />
-              </label>
-              <label className="settings-field">
-                <span>Project key</span>
-                <input
-                  type="text"
-                  value={jiraSettings.projectKey}
-                  onChange={(event) => handleJiraSettingChange('projectKey', event.target.value)}
-                />
-              </label>
-              <label className="settings-field">
-                <span>OAuth client ID</span>
-                <input
-                  type="text"
-                  value={jiraSettings.clientId}
-                  onChange={(event) => handleJiraSettingChange('clientId', event.target.value)}
-                />
-              </label>
-              <label className="settings-field">
-                <span>OAuth client secret</span>
-                <input
-                  type="password"
-                  value={jiraSettings.clientSecret}
-                  onChange={(event) => handleJiraSettingChange('clientSecret', event.target.value)}
-                />
-              </label>
-              <label className="settings-field">
-                <span>Callback URL</span>
-                <input type="text" value={jiraRedirectUri} readOnly />
-              </label>
-              <div className="settings-actions">
-                <button
-                  type="button"
-                  className="primary-button"
-                  onClick={() => void handleSaveJiraSettings()}
-                >
-                  Save
-                </button>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  disabled={!isJiraSettingsComplete}
-                  onClick={() => void handleAuthenticateJira()}
-                >
-                  <ExternalLink size={15} strokeWidth={2.2} />
-                  Grant Jira access
-                </button>
-                <button
-                  type="button"
-                  className="secondary-button"
-                  disabled={!jiraAuthState?.isAuthenticated}
-                  onClick={() => void handleDisconnectJira()}
-                >
-                  Disconnect
-                </button>
-              </div>
-              <p className="settings-status">{formatJiraAuthState(jiraAuthState)}</p>
-            </div>
           </section>
         </div>
       ) : null}

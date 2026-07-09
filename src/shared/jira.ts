@@ -14,15 +14,13 @@ export type JiraTicketStatus = (typeof jiraTicketStatuses)[number];
 export type JiraAuthState = {
   isAuthenticated: boolean;
   siteUrl: string | null;
-  cloudId: string | null;
-  expiresAt: number | null;
+  email: string | null;
 };
 
-export type JiraSettings = {
-  clientId: string;
-  clientSecret: string;
-  projectKey: string;
+export type JiraCredentials = {
   siteUrl: string;
+  email: string;
+  apiToken: string;
 };
 
 export type JiraPullRequestLink = {

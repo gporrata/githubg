@@ -6,18 +6,16 @@ import type {
   TeamMember,
 } from '../shared/settings';
 
-export type JiraTokenState = {
-  accessToken: string;
-  refreshToken: string;
-  expiresAt: number;
-  cloudId: string;
+export type JiraCredentialState = {
   siteUrl: string;
+  email: string;
+  apiToken: string;
 };
 
 export type AppStoreSchema = {
   teamMembers: TeamMember[];
   settings: GithubgSettings;
-  jiraTokens: JiraTokenState | null;
+  jiraCredentials: JiraCredentialState | null;
   mergedPullRequests: Record<string, MergedPullRequestTracking>;
   mergeMethods: Record<string, MergeMethod>;
 };
@@ -25,12 +23,6 @@ export type AppStoreSchema = {
 const defaultSettings: GithubgSettings = {
   theme: 'system',
   pollIntervalMs: 120_000,
-  jira: {
-    clientId: '',
-    clientSecret: '',
-    projectKey: '',
-    siteUrl: '',
-  },
 };
 
 const StoreConstructor = (
@@ -47,7 +39,7 @@ export const getAppStore = (): ElectronStore<AppStoreSchema> => {
     defaults: {
       teamMembers: [],
       settings: defaultSettings,
-      jiraTokens: null,
+      jiraCredentials: null,
       mergedPullRequests: {},
       mergeMethods: {},
     },
@@ -55,12 +47,8 @@ export const getAppStore = (): ElectronStore<AppStoreSchema> => {
       '>=0.1.0': (store) => {
         const settings = store.get('settings') as Partial<GithubgSettings> | undefined;
         store.set('settings', {
-          ...defaultSettings,
-          ...settings,
-          jira: {
-            ...defaultSettings.jira,
-            ...(settings?.jira ?? {}),
-          },
+          theme: settings?.theme ?? defaultSettings.theme,
+          pollIntervalMs: settings?.pollIntervalMs ?? defaultSettings.pollIntervalMs,
         });
       },
     },
@@ -95,33 +83,19 @@ export const getAppStore = (): ElectronStore<AppStoreSchema> => {
             minimum: 30_000,
             default: defaultSettings.pollIntervalMs,
           },
-          jira: {
-            type: 'object',
-            default: defaultSettings.jira,
-            required: ['clientId', 'projectKey', 'siteUrl'],
-            additionalProperties: false,
-            properties: {
-              clientId: { type: 'string', default: '' },
-              clientSecret: { type: 'string', default: '' },
-              projectKey: { type: 'string', default: '' },
-              siteUrl: { type: 'string', default: '' },
-            },
-          },
         },
       },
-      jiraTokens: {
+      jiraCredentials: {
         anyOf: [
           { type: 'null' },
           {
             type: 'object',
-            required: ['accessToken', 'refreshToken', 'expiresAt', 'cloudId', 'siteUrl'],
+            required: ['siteUrl', 'email', 'apiToken'],
             additionalProperties: false,
             properties: {
-              accessToken: { type: 'string' },
-              refreshToken: { type: 'string' },
-              expiresAt: { type: 'number' },
-              cloudId: { type: 'string' },
               siteUrl: { type: 'string' },
+              email: { type: 'string' },
+              apiToken: { type: 'string' },
             },
           },
         ],
