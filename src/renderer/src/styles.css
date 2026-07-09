@@ -327,7 +327,7 @@ h2 {
 
 .jira-auth-grid {
   display: grid;
-  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) minmax(220px, 1.2fr) auto;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) minmax(220px, 1.2fr);
   align-items: end;
   gap: 10px;
 }
@@ -793,6 +793,13 @@ h3 {
   gap: 8px;
 }
 
+.footer-secondary-actions {
+  display: flex;
+  align-items: center;
+  justify-content: end;
+  gap: 8px;
+}
+
 .icon-button {
   width: 38px;
   height: 38px;
@@ -815,6 +822,77 @@ h3 {
   color: var(--muted);
   cursor: progress;
   opacity: 0.72;
+}
+
+.jira-disconnect-button {
+  color: #111827;
+  background: #ffffff;
+  border-color: #111827;
+}
+
+.jira-disconnect-button:hover {
+  color: #111827;
+  background: #f4f7fb;
+  border-color: #111827;
+}
+
+.jira-disconnect-icon {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  display: inline-block;
+}
+
+.jira-glyph,
+.jira-glyph::before,
+.jira-glyph::after {
+  position: absolute;
+  display: block;
+  width: 10px;
+  height: 10px;
+  background: currentColor;
+  border-radius: 2px;
+  transform: rotate(45deg);
+  content: '';
+}
+
+.jira-glyph {
+  left: 6px;
+  top: 6px;
+}
+
+.jira-glyph::before {
+  left: -6px;
+  top: 0;
+  opacity: 0.82;
+}
+
+.jira-glyph::after {
+  left: 0;
+  top: 6px;
+  opacity: 0.62;
+}
+
+.jira-disconnect-badge {
+  position: absolute;
+  right: -2px;
+  top: -2px;
+  width: 13px;
+  height: 13px;
+  background: #ffffff;
+  border: 2px solid #111827;
+  border-radius: 999px;
+}
+
+.jira-disconnect-badge::after {
+  position: absolute;
+  left: 2px;
+  top: 4px;
+  width: 7px;
+  height: 2px;
+  background: #111827;
+  transform: rotate(-38deg);
+  content: '';
 }
 
 .refresh-icon--spinning {

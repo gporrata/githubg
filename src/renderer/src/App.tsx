@@ -58,6 +58,13 @@ const pullRequestMatchesTicket = (pullRequest: PullRequestSummary, ticketKey: st
   );
 };
 
+const JiraDisconnectIcon = (): JSX.Element => (
+  <span className="jira-disconnect-icon" aria-hidden="true">
+    <span className="jira-glyph" />
+    <span className="jira-disconnect-badge" />
+  </span>
+);
+
 export const App = (): JSX.Element => {
   const [activeTab, setActiveTab] = useState<TabId>('open-prs');
   const [openPullRequests, setOpenPullRequests] = useState<PullRequestSummary[]>([]);
@@ -429,81 +436,75 @@ export const App = (): JSX.Element => {
                 <span className="count-pill">{jiraTicketsWithPullRequests.length}</span>
               </div>
 
-              <div className="jira-auth-panel">
-                <div className="jira-auth-heading">
-                  <div>
-                    <h3>Jira access</h3>
-                    <p>
-                      <a href={atlassianApiTokenUrl} target="_blank" rel="noreferrer">
-                        Create an Atlassian token, then paste it here.
-                      </a>
-                    </p>
-                    <div className="jira-scope-note">
-                      <span>Required scopes: use classic scopes only.</span>
-                      <ul>
-                        <li>
-                          <code>read:jira-work</code>
-                        </li>
-                        <li>
-                          <code>read:jira-user</code>
-                        </li>
-                      </ul>
+              {!isJiraConnected ? (
+                <div className="jira-auth-panel">
+                  <div className="jira-auth-heading">
+                    <div>
+                      <h3>Jira access</h3>
+                      <p>
+                        <a href={atlassianApiTokenUrl} target="_blank" rel="noreferrer">
+                          Create an Atlassian token, then paste it here.
+                        </a>
+                      </p>
+                      <div className="jira-scope-note">
+                        <span>Required scopes: use classic scopes only.</span>
+                        <ul>
+                          <li>
+                            <code>read:jira-work</code>
+                          </li>
+                          <li>
+                            <code>read:jira-user</code>
+                          </li>
+                        </ul>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="jira-auth-grid">
-                  <label className="settings-field">
-                    <span>Jira URL</span>
-                    <input
-                      type="url"
-                      value={jiraCredentials.siteUrl}
-                      placeholder="https://[your company].jira.com"
-                      onChange={(event) =>
-                        handleJiraCredentialChange('siteUrl', event.target.value)
-                      }
-                    />
-                  </label>
-                  <label className="settings-field">
-                    <span>Email</span>
-                    <input
-                      type="email"
-                      value={jiraCredentials.email}
-                      onChange={(event) =>
-                        handleJiraCredentialChange('email', event.target.value)
-                      }
-                    />
-                  </label>
-                  <label className="settings-field jira-token-field">
-                    <span>API token</span>
-                    <span className="jira-token-input">
+                  <div className="jira-auth-grid">
+                    <label className="settings-field">
+                      <span>Jira URL</span>
                       <input
-                        type="password"
-                        value={jiraCredentials.apiToken}
+                        type="url"
+                        value={jiraCredentials.siteUrl}
+                        placeholder="https://[your company].jira.com"
                         onChange={(event) =>
-                          handleJiraCredentialChange('apiToken', event.target.value)
+                          handleJiraCredentialChange('siteUrl', event.target.value)
                         }
                       />
-                      {isJiraVerifying ? (
-                        <RefreshCw
-                          className="refresh-icon refresh-icon--spinning"
-                          size={16}
-                          strokeWidth={2.2}
+                    </label>
+                    <label className="settings-field">
+                      <span>Email</span>
+                      <input
+                        type="email"
+                        value={jiraCredentials.email}
+                        onChange={(event) =>
+                          handleJiraCredentialChange('email', event.target.value)
+                        }
+                      />
+                    </label>
+                    <label className="settings-field jira-token-field">
+                      <span>API token</span>
+                      <span className="jira-token-input">
+                        <input
+                          type="password"
+                          value={jiraCredentials.apiToken}
+                          onChange={(event) =>
+                            handleJiraCredentialChange('apiToken', event.target.value)
+                          }
                         />
-                      ) : null}
-                    </span>
-                    {jiraTokenError ? <span className="field-error">{jiraTokenError}</span> : null}
-                  </label>
-                  <button
-                    type="button"
-                    className="secondary-button"
-                    disabled={!jiraAuthState?.isAuthenticated}
-                    onClick={() => void handleDisconnectJira()}
-                  >
-                    Disconnect
-                  </button>
+                        {isJiraVerifying ? (
+                          <RefreshCw
+                            className="refresh-icon refresh-icon--spinning"
+                            size={16}
+                            strokeWidth={2.2}
+                          />
+                        ) : null}
+                      </span>
+                      {jiraTokenError ? <span className="field-error">{jiraTokenError}</span> : null}
+                    </label>
+                  </div>
                 </div>
-              </div>
+              ) : null}
 
               {!isJiraCredentialsComplete ? (
                 <div className="empty-list empty-list--setup">
@@ -608,15 +609,28 @@ export const App = (): JSX.Element => {
             {nextRefreshSeconds}
           </span>
         </div>
-        <button
-          type="button"
-          className="icon-button"
-          title="Settings"
-          aria-label="Settings"
-          onClick={() => setIsSettingsModalOpen(true)}
-        >
-          <Settings size={18} strokeWidth={2.2} />
-        </button>
+        <div className="footer-secondary-actions">
+          <button
+            type="button"
+            className="icon-button"
+            title="Settings"
+            aria-label="Settings"
+            onClick={() => setIsSettingsModalOpen(true)}
+          >
+            <Settings size={18} strokeWidth={2.2} />
+          </button>
+          {jiraAuthState?.isAuthenticated ? (
+            <button
+              type="button"
+              className="icon-button jira-disconnect-button"
+              title="Disconnect Jira"
+              aria-label="Disconnect Jira"
+              onClick={() => void handleDisconnectJira()}
+            >
+              <JiraDisconnectIcon />
+            </button>
+          ) : null}
+        </div>
       </footer>
 
       {isTeamModalOpen ? (
