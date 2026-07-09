@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   getApprovedPullRequestBlockedReason,
   hasPullRequestConflicts,
+  type PullRequestRerunMode,
   type PullRequestSummary,
 } from '../../../shared/pullRequest';
 import type { MergeMethod } from '../../../shared/settings';
@@ -105,6 +106,17 @@ const getMergeLabel = (pullRequest: PullRequestSummary): string => {
   return 'Ready';
 };
 
+const mergeMethodLabels = {
+  SQUASH: 'Squash',
+  MERGE: 'Merge',
+  REBASE: 'Rebase',
+} satisfies Record<MergeMethod, string>;
+
+const rerunModeLabels = {
+  failed: 'Failed',
+  all: 'All',
+} satisfies Record<PullRequestRerunMode, string>;
+
 export const PullRequestCard = ({
   highlighted = false,
   onPullRequestChanged,
@@ -119,6 +131,9 @@ export const PullRequestCard = ({
   const [isRequestingReview, setIsRequestingReview] = useState(false);
   const [updateBranchError, setUpdateBranchError] = useState<string | null>(null);
   const [isUpdatingBranch, setIsUpdatingBranch] = useState(false);
+  const [rerunMode, setRerunMode] = useState<PullRequestRerunMode>('failed');
+  const [rerunError, setRerunError] = useState<string | null>(null);
+  const [isRerunning, setIsRerunning] = useState(false);
   const [hasLocalMergedActiveActions, setHasLocalMergedActiveActions] = useState(false);
   const tone = getCardTone(pullRequest);
   const approvedBlockedReason = getApprovedPullRequestBlockedReason(pullRequest);
@@ -130,9 +145,14 @@ export const PullRequestCard = ({
   const requestedChangeReviewers = pullRequest.requestedChangeReviewers;
   const canRequestReview = requestedChangeReviewers.length > 0 && !isRequestingReview;
   const canUpdateBranch = approvedBlockedReason === 'out-of-date' && !isUpdatingBranch;
+  const canRerunChecks =
+    approvedBlockedReason === 'failed-checks' &&
+    pullRequest.actionWorkflowRuns.length > 0 &&
+    !isRerunning;
   const hasRunningAction =
     isMerging ||
     isUpdatingBranch ||
+    isRerunning ||
     hasLocalMergedActiveActions ||
     pullRequest.mergeInProgress ||
     (pullRequest.state === 'MERGED' && pullRequest.hasActiveActions);
@@ -166,6 +186,16 @@ export const PullRequestCard = ({
   const handleMergeMethodChange = (value: MergeMethod): void => {
     setMergeMethod(value);
     void window.githubg.setMergeMethod(pullRequest.id, value);
+  };
+
+  const handleCycleMergeMethod = (): void => {
+    const currentIndex = mergeMethods.indexOf(mergeMethod);
+    const nextMethod = mergeMethods[(currentIndex + 1) % mergeMethods.length];
+    handleMergeMethodChange(nextMethod);
+  };
+
+  const handleCycleRerunMode = (): void => {
+    setRerunMode((mode) => (mode === 'failed' ? 'all' : 'failed'));
   };
 
   const handleMerge = async (): Promise<void> => {
@@ -210,6 +240,24 @@ export const PullRequestCard = ({
       setUpdateBranchError(error instanceof Error ? error.message : 'Update branch failed.');
     } finally {
       setIsUpdatingBranch(false);
+    }
+  };
+
+  const handleRerunChecks = async (): Promise<void> => {
+    setIsRerunning(true);
+    setRerunError(null);
+
+    try {
+      await window.githubg.rerunPullRequestWorkflowRuns(
+        pullRequest.repositoryNameWithOwner,
+        pullRequest.actionWorkflowRuns.map((run) => run.id),
+        rerunMode,
+      );
+      await onPullRequestChanged?.();
+    } catch (error) {
+      setRerunError(error instanceof Error ? error.message : 'Rerun failed.');
+    } finally {
+      setIsRerunning(false);
     }
   };
 
@@ -303,24 +351,53 @@ export const PullRequestCard = ({
               </button>
             ) : null}
             {showMergeControls ? (
-              <>
-                <label>
-                  <span>Method</span>
-                  <select
-                    value={mergeMethod}
-                    onChange={(event) => handleMergeMethodChange(event.target.value as MergeMethod)}
-                  >
-                    {mergeMethods.map((method) => (
-                      <option key={method} value={method}>
-                        {method.toLowerCase()}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button type="button" className="merge-button" disabled={!canMerge} onClick={handleMerge}>
-                  {isMerging ? 'Merging' : 'Merge'}
+              <div className="multi-action">
+                <button
+                  type="button"
+                  className="merge-button multi-action-main"
+                  disabled={!canMerge}
+                  onClick={handleMerge}
+                >
+                  {isMerging ? 'Merging' : `${mergeMethodLabels[mergeMethod]} Merge`}
                 </button>
-              </>
+                <button
+                  type="button"
+                  className="multi-action-mode"
+                  aria-label="Change merge method"
+                  disabled={isMerging}
+                  onClick={handleCycleMergeMethod}
+                >
+                  {mergeMethodLabels[mergeMethod]}
+                </button>
+              </div>
+            ) : null}
+            {approvedBlockedReason === 'failed-checks' && pullRequest.actionWorkflowRuns.length > 0 ? (
+              <div className="multi-action">
+                <button
+                  type="button"
+                  className="review-request-button multi-action-main"
+                  disabled={!canRerunChecks}
+                  onClick={handleRerunChecks}
+                >
+                  {isRerunning ? (
+                    <RefreshCw
+                      className="refresh-icon refresh-icon--spinning"
+                      size={15}
+                      strokeWidth={2.2}
+                    />
+                  ) : null}
+                  <span>{isRerunning ? 'Rerunning' : `Rerun ${rerunModeLabels[rerunMode]} Jobs`}</span>
+                </button>
+                <button
+                  type="button"
+                  className="multi-action-mode"
+                  aria-label="Change rerun mode"
+                  disabled={isRerunning}
+                  onClick={handleCycleRerunMode}
+                >
+                  {rerunModeLabels[rerunMode]}
+                </button>
+              </div>
             ) : null}
             {approvedBlockedReason === 'out-of-date' ? (
               <button
@@ -342,6 +419,7 @@ export const PullRequestCard = ({
             {mergeError ? <p className="merge-error">{mergeError}</p> : null}
             {reviewRequestError ? <p className="merge-error">{reviewRequestError}</p> : null}
             {updateBranchError ? <p className="merge-error">{updateBranchError}</p> : null}
+            {rerunError ? <p className="merge-error">{rerunError}</p> : null}
           </div>
         </div>
       ) : null}

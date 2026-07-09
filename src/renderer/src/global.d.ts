@@ -1,6 +1,6 @@
 import type { JiraAuthState, JiraCredentials, JiraTicketSummary } from '../../shared/jira';
 import type { GithubgSettings, MergeMethod, TeamMember, ThemeId } from '../../shared/settings';
-import type { PullRequestSummary } from '../../shared/pullRequest';
+import type { PullRequestRerunMode, PullRequestSummary } from '../../shared/pullRequest';
 
 declare global {
   interface Window {
@@ -24,6 +24,11 @@ declare global {
       mergePullRequest: (pullRequestId: string, mergeMethod: MergeMethod) => Promise<void>;
       requestPullRequestReview: (pullRequestId: string, userIds: string[]) => Promise<void>;
       updatePullRequestBranch: (pullRequestId: string) => Promise<void>;
+      rerunPullRequestWorkflowRuns: (
+        repositoryNameWithOwner: string,
+        runIds: number[],
+        mode: PullRequestRerunMode,
+      ) => Promise<void>;
     };
   }
 }

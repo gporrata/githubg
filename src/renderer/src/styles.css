@@ -736,6 +736,43 @@ h3 {
   text-transform: none;
 }
 
+.multi-action {
+  height: 34px;
+  display: inline-flex;
+  align-items: stretch;
+}
+
+.multi-action-main {
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border-radius: 8px 0 0 8px;
+}
+
+.multi-action-mode {
+  min-width: 68px;
+  height: 34px;
+  padding: 0 10px;
+  color: var(--text-strong);
+  background: var(--surface-subtle);
+  border: 1px solid var(--border-strong);
+  border-left: 0;
+  border-radius: 0 8px 8px 0;
+  cursor: pointer;
+}
+
+.multi-action-mode:hover {
+  background: var(--surface-hover);
+}
+
+.multi-action-mode:disabled {
+  color: #778190;
+  background: #d8dee6;
+  cursor: not-allowed;
+}
+
 .merge-button,
 .review-request-button {
   height: 34px;

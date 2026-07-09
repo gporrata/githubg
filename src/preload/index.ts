@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { JiraAuthState, JiraCredentials, JiraTicketSummary } from '../shared/jira';
-import type { PullRequestSummary } from '../shared/pullRequest';
+import type { PullRequestRerunMode, PullRequestSummary } from '../shared/pullRequest';
 import type { GithubgSettings, MergeMethod, TeamMember, ThemeId } from '../shared/settings';
 
 contextBridge.exposeInMainWorld('githubg', {
@@ -34,4 +34,15 @@ contextBridge.exposeInMainWorld('githubg', {
     ipcRenderer.invoke('pull-request:request-review', pullRequestId, userIds),
   updatePullRequestBranch: (pullRequestId: string): Promise<void> =>
     ipcRenderer.invoke('pull-request:update-branch', pullRequestId),
+  rerunPullRequestWorkflowRuns: (
+    repositoryNameWithOwner: string,
+    runIds: number[],
+    mode: PullRequestRerunMode,
+  ): Promise<void> =>
+    ipcRenderer.invoke(
+      'pull-request:rerun-workflow-runs',
+      repositoryNameWithOwner,
+      runIds,
+      mode,
+    ),
 });

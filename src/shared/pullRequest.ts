@@ -32,6 +32,11 @@ export type PullRequestReviewer = {
   login: string;
 };
 
+export type PullRequestActionRun = {
+  id: number;
+  name: string;
+};
+
 export type PullRequestSummary = {
   id: string;
   databaseId: number | null;
@@ -61,9 +66,12 @@ export type PullRequestSummary = {
   checksState: PullRequestCheckState;
   requiredStatusChecksPassed: boolean;
   isDraft: boolean;
+  actionWorkflowRuns: PullRequestActionRun[];
   requestedChangeReviewers: PullRequestReviewer[];
   commentThreads: PullRequestCommentThread[];
 };
+
+export type PullRequestRerunMode = 'failed' | 'all';
 
 export type ApprovedPullRequestBlockedReason =
   | 'conflicts'
