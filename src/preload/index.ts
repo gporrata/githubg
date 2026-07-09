@@ -32,4 +32,6 @@ contextBridge.exposeInMainWorld('githubg', {
     ipcRenderer.invoke('pull-request:merge', pullRequestId, mergeMethod),
   requestPullRequestReview: (pullRequestId: string, userIds: string[]): Promise<void> =>
     ipcRenderer.invoke('pull-request:request-review', pullRequestId, userIds),
+  updatePullRequestBranch: (pullRequestId: string): Promise<void> =>
+    ipcRenderer.invoke('pull-request:update-branch', pullRequestId),
 });

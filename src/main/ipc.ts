@@ -9,6 +9,7 @@ import {
   fetchOpenPullRequestsForTeamMembers,
   fetchOpenPullRequestsForViewer,
   requestPullRequestReview,
+  updatePullRequestBranch,
 } from './github/pullRequests';
 import {
   disconnectJira,
@@ -123,6 +124,13 @@ export const registerIpcHandlers = (): void => {
     'pull-request:request-review',
     async (_event, pullRequestId: string, userIds: string[]): Promise<void> => {
       await requestPullRequestReview(pullRequestId, userIds);
+    },
+  );
+
+  ipcMain.handle(
+    'pull-request:update-branch',
+    async (_event, pullRequestId: string): Promise<void> => {
+      await updatePullRequestBranch(pullRequestId);
     },
   );
 };

@@ -23,6 +23,7 @@ declare global {
       setMergeMethod: (pullRequestId: string, mergeMethod: MergeMethod) => Promise<MergeMethod>;
       mergePullRequest: (pullRequestId: string, mergeMethod: MergeMethod) => Promise<void>;
       requestPullRequestReview: (pullRequestId: string, userIds: string[]) => Promise<void>;
+      updatePullRequestBranch: (pullRequestId: string) => Promise<void>;
     };
   }
 }

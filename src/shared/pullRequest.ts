@@ -64,3 +64,30 @@ export type PullRequestSummary = {
   requestedChangeReviewers: PullRequestReviewer[];
   commentThreads: PullRequestCommentThread[];
 };
+
+export type ApprovedPullRequestBlockedReason = 'conflicts' | 'failed-checks' | 'out-of-date';
+
+export const hasPullRequestConflicts = (pullRequest: PullRequestSummary): boolean =>
+  pullRequest.state === 'OPEN' && pullRequest.hasConflicts;
+
+export const getApprovedPullRequestBlockedReason = (
+  pullRequest: PullRequestSummary,
+): ApprovedPullRequestBlockedReason | null => {
+  if (pullRequest.state !== 'OPEN' || !pullRequest.approved) {
+    return null;
+  }
+
+  if (pullRequest.hasConflicts) {
+    return 'conflicts';
+  }
+
+  if (pullRequest.checksState === 'ERROR' || pullRequest.checksState === 'FAILURE') {
+    return 'failed-checks';
+  }
+
+  if (pullRequest.mergeStateStatus === 'BEHIND') {
+    return 'out-of-date';
+  }
+
+  return null;
+};

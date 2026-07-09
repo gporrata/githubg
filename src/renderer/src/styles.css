@@ -534,6 +534,10 @@ h2 {
   border-left-color: #c83f49;
 }
 
+.pr-card--blocked {
+  border-left-color: #c83f49;
+}
+
 .pr-card--mergeable {
   border-left-color: #2f8d63;
 }

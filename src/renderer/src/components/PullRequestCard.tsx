@@ -1,6 +1,10 @@
 import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { PullRequestSummary } from '../../../shared/pullRequest';
+import {
+  getApprovedPullRequestBlockedReason,
+  hasPullRequestConflicts,
+  type PullRequestSummary,
+} from '../../../shared/pullRequest';
 import type { MergeMethod } from '../../../shared/settings';
 import { mergeMethods } from '../../../shared/settings';
 
@@ -21,8 +25,14 @@ const getCardTone = (pullRequest: PullRequestSummary): string => {
     return 'merged';
   }
 
-  if (pullRequest.hasConflicts) {
+  if (hasPullRequestConflicts(pullRequest)) {
     return 'conflicts';
+  }
+
+  const approvedBlockedReason = getApprovedPullRequestBlockedReason(pullRequest);
+
+  if (approvedBlockedReason === 'failed-checks' || approvedBlockedReason === 'out-of-date') {
+    return 'blocked';
   }
 
   if (hasUnaddressedRequestedChanges(pullRequest)) {
@@ -69,6 +79,20 @@ const getMergeLabel = (pullRequest: PullRequestSummary): string => {
     return pullRequest.hasActiveActions ? 'Actions running' : 'Merged';
   }
 
+  if (hasPullRequestConflicts(pullRequest)) {
+    return 'Conflicts';
+  }
+
+  const approvedBlockedReason = getApprovedPullRequestBlockedReason(pullRequest);
+
+  if (approvedBlockedReason === 'failed-checks') {
+    return 'Failed Checks';
+  }
+
+  if (approvedBlockedReason === 'out-of-date') {
+    return 'Out of Date';
+  }
+
   if (!pullRequest.canBeMerged) {
     return 'Blocked';
   }
@@ -84,8 +108,11 @@ export const PullRequestCard = ({ highlighted = false, pullRequest }: PullReques
   const [mergeError, setMergeError] = useState<string | null>(null);
   const [reviewRequestError, setReviewRequestError] = useState<string | null>(null);
   const [isRequestingReview, setIsRequestingReview] = useState(false);
+  const [updateBranchError, setUpdateBranchError] = useState<string | null>(null);
+  const [isUpdatingBranch, setIsUpdatingBranch] = useState(false);
   const [hasLocalMergedActiveActions, setHasLocalMergedActiveActions] = useState(false);
   const tone = getCardTone(pullRequest);
+  const approvedBlockedReason = getApprovedPullRequestBlockedReason(pullRequest);
   const reviewLabel = getReviewLabel(pullRequest);
   const createdAt = useMemo(() => formatDate(pullRequest.createdAt), [pullRequest.createdAt]);
   const mergeLabel = hasLocalMergedActiveActions ? 'Actions running' : getMergeLabel(pullRequest);
@@ -93,8 +120,10 @@ export const PullRequestCard = ({ highlighted = false, pullRequest }: PullReques
   const showMergeControls = pullRequest.canBeMerged || hasLocalMergedActiveActions || isMerging;
   const requestedChangeReviewers = pullRequest.requestedChangeReviewers;
   const canRequestReview = requestedChangeReviewers.length > 0 && !isRequestingReview;
+  const canUpdateBranch = approvedBlockedReason === 'out-of-date' && !isUpdatingBranch;
   const hasRunningAction =
     isMerging ||
+    isUpdatingBranch ||
     hasLocalMergedActiveActions ||
     pullRequest.mergeInProgress ||
     (pullRequest.state === 'MERGED' && pullRequest.hasActiveActions);
@@ -157,6 +186,19 @@ export const PullRequestCard = ({ highlighted = false, pullRequest }: PullReques
       setReviewRequestError(error instanceof Error ? error.message : 'Review request failed.');
     } finally {
       setIsRequestingReview(false);
+    }
+  };
+
+  const handleUpdateBranch = async (): Promise<void> => {
+    setIsUpdatingBranch(true);
+    setUpdateBranchError(null);
+
+    try {
+      await window.githubg.updatePullRequestBranch(pullRequest.id);
+    } catch (error) {
+      setUpdateBranchError(error instanceof Error ? error.message : 'Update branch failed.');
+    } finally {
+      setIsUpdatingBranch(false);
     }
   };
 
@@ -269,8 +311,19 @@ export const PullRequestCard = ({ highlighted = false, pullRequest }: PullReques
                 </button>
               </>
             ) : null}
+            {approvedBlockedReason === 'out-of-date' ? (
+              <button
+                type="button"
+                className="review-request-button"
+                disabled={!canUpdateBranch}
+                onClick={handleUpdateBranch}
+              >
+                {isUpdatingBranch ? 'Updating' : 'Update Branch'}
+              </button>
+            ) : null}
             {mergeError ? <p className="merge-error">{mergeError}</p> : null}
             {reviewRequestError ? <p className="merge-error">{reviewRequestError}</p> : null}
+            {updateBranchError ? <p className="merge-error">{updateBranchError}</p> : null}
           </div>
         </div>
       ) : null}

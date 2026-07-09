@@ -4,12 +4,14 @@ import {
   PULL_REQUEST_SEARCH_QUERY,
   PULL_REQUEST_NODES_QUERY,
   REQUEST_REVIEWS_MUTATION,
+  UPDATE_PULL_REQUEST_BRANCH_MUTATION,
   VIEWER_QUERY,
   type GithubPullRequestNode,
   type GithubPullRequestNodesResponse,
   type GithubPullRequestSearchResponse,
   type GithubViewerResponse,
   type RequestReviewsResponse,
+  type UpdatePullRequestBranchResponse,
 } from './pullRequestQueries';
 import { getVisibleTrackedMergedPullRequestIds } from './mergedPullRequestTracking';
 import { getAppStore } from '../store';
@@ -272,6 +274,12 @@ export const requestPullRequestReview = async (
   await githubGraphql<RequestReviewsResponse>(REQUEST_REVIEWS_MUTATION, {
     pullRequestId,
     userIds,
+  });
+};
+
+export const updatePullRequestBranch = async (pullRequestId: string): Promise<void> => {
+  await githubGraphql<UpdatePullRequestBranchResponse>(UPDATE_PULL_REQUEST_BRANCH_MUTATION, {
+    pullRequestId,
   });
 };
 
