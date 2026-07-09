@@ -291,8 +291,32 @@ h2 {
   line-height: 1.4;
 }
 
-.jira-auth-heading .jira-scope-note {
-  margin-top: 6px;
+.jira-auth-heading p a {
+  color: var(--link);
+  text-decoration: none;
+}
+
+.jira-auth-heading p a:hover {
+  text-decoration: underline;
+}
+
+.jira-scope-note {
+  display: grid;
+  gap: 3px;
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1.35;
+}
+
+.jira-scope-note ul {
+  margin: 0;
+  padding-left: 14px;
+  transform: translateX(-4px);
+}
+
+.jira-scope-note li {
+  padding-left: 2px;
 }
 
 .jira-scope-note code {

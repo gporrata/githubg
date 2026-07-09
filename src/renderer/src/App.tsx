@@ -1,4 +1,4 @@
-import { ExternalLink, Plus, RefreshCw, Settings } from 'lucide-react';
+import { Plus, RefreshCw, Settings } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   JiraAuthState,
@@ -433,21 +433,29 @@ export const App = (): JSX.Element => {
                 <div className="jira-auth-heading">
                   <div>
                     <h3>Jira access</h3>
-                    <p>Create an Atlassian API token, then paste it here.</p>
-                    <p className="jira-scope-note">
-                      Required scopes: <code>read:me</code>, <code>read:field:*</code>,{' '}
-                      <code>read:issue-details:jira</code>, <code>read:jql:jira</code>.
+                    <p>
+                      <a href={atlassianApiTokenUrl} target="_blank" rel="noreferrer">
+                        Create an Atlassian token, then paste it here.
+                      </a>
                     </p>
+                    <div className="jira-scope-note">
+                      <span>Required scopes:</span>
+                      <ul>
+                        <li>
+                          <code>read:me</code>
+                        </li>
+                        <li>
+                          <code>read:field:*</code>
+                        </li>
+                        <li>
+                          <code>read:issue-details:jira</code>
+                        </li>
+                        <li>
+                          <code>read:jql:jira</code>
+                        </li>
+                      </ul>
+                    </div>
                   </div>
-                  <a
-                    className="secondary-button"
-                    href={atlassianApiTokenUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <ExternalLink size={15} strokeWidth={2.2} />
-                    API tokens
-                  </a>
                 </div>
 
                 <div className="jira-auth-grid">
