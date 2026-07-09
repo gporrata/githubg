@@ -434,6 +434,10 @@ export const App = (): JSX.Element => {
                   <div>
                     <h3>Jira access</h3>
                     <p>Create an Atlassian API token, then paste it here.</p>
+                    <p className="jira-scope-note">
+                      Required scopes: <code>read:me</code>, <code>read:field:*</code>,{' '}
+                      <code>read:issue-details:jira</code>, <code>read:jql:jira</code>.
+                    </p>
                   </div>
                   <a
                     className="secondary-button"

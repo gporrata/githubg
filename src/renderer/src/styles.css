@@ -291,6 +291,16 @@ h2 {
   line-height: 1.4;
 }
 
+.jira-auth-heading .jira-scope-note {
+  margin-top: 6px;
+}
+
+.jira-scope-note code {
+  color: var(--text-strong);
+  font-size: 0.78rem;
+  text-transform: none;
+}
+
 .jira-auth-grid {
   display: grid;
   grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) minmax(220px, 1.2fr) auto;
