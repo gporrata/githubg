@@ -1,4 +1,5 @@
 import { ipcMain } from 'electron';
+import type { JiraAuthState, JiraSettings, JiraTicketSummary } from '../shared/jira';
 import type { GithubgSettings, MergeMethod, TeamMember, ThemeId } from '../shared/settings';
 import { mergeMethods, themeOptions } from '../shared/settings';
 import { setOpenPullRequestBadge } from './badge';
@@ -9,6 +10,13 @@ import {
   fetchOpenPullRequestsForViewer,
   requestPullRequestReview,
 } from './github/pullRequests';
+import {
+  authenticateJira,
+  disconnectJira,
+  fetchJiraTickets,
+  getJiraAuthState,
+  jiraRedirectUri,
+} from './jira';
 import { getAppStore } from './store';
 
 const isMergeMethod = (value: unknown): value is MergeMethod =>
@@ -32,6 +40,32 @@ export const registerIpcHandlers = (): void => {
     store.set('settings', settings);
     return settings;
   });
+
+  ipcMain.handle('settings:set-jira', (_event, jiraSettings: JiraSettings): GithubgSettings => {
+    const store = getAppStore();
+    const settings = {
+      ...store.get('settings'),
+      jira: {
+        clientId: jiraSettings.clientId.trim(),
+        clientSecret: jiraSettings.clientSecret.trim(),
+        projectKey: jiraSettings.projectKey.trim().toUpperCase(),
+        siteUrl: jiraSettings.siteUrl.trim().replace(/\/+$/, ''),
+      },
+    };
+
+    store.set('settings', settings);
+    return settings;
+  });
+
+  ipcMain.handle('jira:redirect-uri', (): string => jiraRedirectUri);
+
+  ipcMain.handle('jira:auth-state', (): JiraAuthState => getJiraAuthState());
+
+  ipcMain.handle('jira:connect', (): Promise<JiraAuthState> => authenticateJira());
+
+  ipcMain.handle('jira:disconnect', (): JiraAuthState => disconnectJira());
+
+  ipcMain.handle('jira:tickets:list', (): Promise<JiraTicketSummary[]> => fetchJiraTickets());
 
   ipcMain.handle('known-users:list', () => fetchKnownUsers());
 

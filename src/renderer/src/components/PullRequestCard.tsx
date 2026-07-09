@@ -1,10 +1,11 @@
 import { ChevronDown, ChevronRight, ExternalLink } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PullRequestSummary } from '../../../shared/pullRequest';
 import type { MergeMethod } from '../../../shared/settings';
 import { mergeMethods } from '../../../shared/settings';
 
 type PullRequestCardProps = {
+  highlighted?: boolean;
   pullRequest: PullRequestSummary;
 };
 
@@ -71,7 +72,8 @@ const getMergeLabel = (pullRequest: PullRequestSummary): string => {
   return 'Ready';
 };
 
-export const PullRequestCard = ({ pullRequest }: PullRequestCardProps): JSX.Element => {
+export const PullRequestCard = ({ highlighted = false, pullRequest }: PullRequestCardProps): JSX.Element => {
+  const cardRef = useRef<HTMLElement | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [mergeMethod, setMergeMethod] = useState<MergeMethod>('SQUASH');
   const [isMerging, setIsMerging] = useState(false);
@@ -113,6 +115,12 @@ export const PullRequestCard = ({ pullRequest }: PullRequestCardProps): JSX.Elem
     }
   }, [pullRequest.hasActiveActions, pullRequest.state]);
 
+  useEffect(() => {
+    if (highlighted) {
+      cardRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+    }
+  }, [highlighted]);
+
   const handleMergeMethodChange = (value: MergeMethod): void => {
     setMergeMethod(value);
     void window.githubg.setMergeMethod(pullRequest.id, value);
@@ -149,7 +157,12 @@ export const PullRequestCard = ({ pullRequest }: PullRequestCardProps): JSX.Elem
   };
 
   return (
-    <article className={`pr-card pr-card--${tone}${hasRunningAction ? ' pr-card--action-running' : ''}`}>
+    <article
+      ref={cardRef}
+      className={`pr-card pr-card--${tone}${hasRunningAction ? ' pr-card--action-running' : ''}${
+        highlighted ? ' pr-card--highlighted' : ''
+      }`}
+    >
       <header className="pr-card-header">
         <button
           type="button"

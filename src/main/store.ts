@@ -27,6 +27,7 @@ const defaultSettings: GithubgSettings = {
   pollIntervalMs: 120_000,
   jira: {
     clientId: '',
+    clientSecret: '',
     projectKey: '',
     siteUrl: '',
   },
@@ -101,6 +102,7 @@ export const getAppStore = (): ElectronStore<AppStoreSchema> => {
             additionalProperties: false,
             properties: {
               clientId: { type: 'string', default: '' },
+              clientSecret: { type: 'string', default: '' },
               projectKey: { type: 'string', default: '' },
               siteUrl: { type: 'string', default: '' },
             },

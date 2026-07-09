@@ -1,3 +1,4 @@
+import type { JiraAuthState, JiraSettings, JiraTicketSummary } from '../../shared/jira';
 import type { GithubgSettings, MergeMethod, TeamMember, ThemeId } from '../../shared/settings';
 import type { PullRequestSummary } from '../../shared/pullRequest';
 
@@ -7,6 +8,12 @@ declare global {
       appName: string;
       getSettings: () => Promise<GithubgSettings>;
       setTheme: (theme: ThemeId) => Promise<GithubgSettings>;
+      setJiraSettings: (settings: JiraSettings) => Promise<GithubgSettings>;
+      getJiraRedirectUri: () => Promise<string>;
+      getJiraAuthState: () => Promise<JiraAuthState>;
+      connectJira: () => Promise<JiraAuthState>;
+      disconnectJira: () => Promise<JiraAuthState>;
+      listJiraTickets: () => Promise<JiraTicketSummary[]>;
       listOpenPullRequests: () => Promise<PullRequestSummary[]>;
       listReviewPullRequests: () => Promise<PullRequestSummary[]>;
       listKnownUsers: () => Promise<TeamMember[]>;

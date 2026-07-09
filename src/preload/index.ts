@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron';
+import type { JiraAuthState, JiraSettings, JiraTicketSummary } from '../shared/jira';
 import type { PullRequestSummary } from '../shared/pullRequest';
 import type { GithubgSettings, MergeMethod, TeamMember, ThemeId } from '../shared/settings';
 
@@ -7,6 +8,13 @@ contextBridge.exposeInMainWorld('githubg', {
   getSettings: (): Promise<GithubgSettings> => ipcRenderer.invoke('settings:get'),
   setTheme: (theme: ThemeId): Promise<GithubgSettings> =>
     ipcRenderer.invoke('settings:set-theme', theme),
+  setJiraSettings: (settings: JiraSettings): Promise<GithubgSettings> =>
+    ipcRenderer.invoke('settings:set-jira', settings),
+  getJiraRedirectUri: (): Promise<string> => ipcRenderer.invoke('jira:redirect-uri'),
+  getJiraAuthState: (): Promise<JiraAuthState> => ipcRenderer.invoke('jira:auth-state'),
+  connectJira: (): Promise<JiraAuthState> => ipcRenderer.invoke('jira:connect'),
+  disconnectJira: (): Promise<JiraAuthState> => ipcRenderer.invoke('jira:disconnect'),
+  listJiraTickets: (): Promise<JiraTicketSummary[]> => ipcRenderer.invoke('jira:tickets:list'),
   listOpenPullRequests: (): Promise<PullRequestSummary[]> =>
     ipcRenderer.invoke('pull-requests:list-open'),
   listReviewPullRequests: (): Promise<PullRequestSummary[]> =>

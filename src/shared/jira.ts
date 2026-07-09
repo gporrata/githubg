@@ -20,6 +20,7 @@ export type JiraAuthState = {
 
 export type JiraSettings = {
   clientId: string;
+  clientSecret: string;
   projectKey: string;
   siteUrl: string;
 };

@@ -21,6 +21,7 @@ export type MergedPullRequestTracking = {
 
 export type JiraAppSettings = {
   clientId: string;
+  clientSecret: string;
   projectKey: string;
   siteUrl: string;
 };
