@@ -58,13 +58,6 @@ const pullRequestMatchesTicket = (pullRequest: PullRequestSummary, ticketKey: st
   );
 };
 
-const JiraDisconnectIcon = (): JSX.Element => (
-  <span className="jira-disconnect-icon" aria-hidden="true">
-    <span className="jira-glyph" />
-    <span className="jira-disconnect-badge" />
-  </span>
-);
-
 export const App = (): JSX.Element => {
   const [activeTab, setActiveTab] = useState<TabId>('open-prs');
   const [openPullRequests, setOpenPullRequests] = useState<PullRequestSummary[]>([]);
@@ -627,7 +620,7 @@ export const App = (): JSX.Element => {
               aria-label="Disconnect Jira"
               onClick={() => void handleDisconnectJira()}
             >
-              <JiraDisconnectIcon />
+              <span className="jira-disconnect-text">Jira</span>
             </button>
           ) : null}
         </div>

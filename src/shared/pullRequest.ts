@@ -65,7 +65,11 @@ export type PullRequestSummary = {
   commentThreads: PullRequestCommentThread[];
 };
 
-export type ApprovedPullRequestBlockedReason = 'conflicts' | 'failed-checks' | 'out-of-date';
+export type ApprovedPullRequestBlockedReason =
+  | 'conflicts'
+  | 'failed-checks'
+  | 'out-of-date'
+  | 'actions-pending';
 
 export const hasPullRequestConflicts = (pullRequest: PullRequestSummary): boolean =>
   pullRequest.state === 'OPEN' && pullRequest.hasConflicts;
@@ -87,6 +91,10 @@ export const getApprovedPullRequestBlockedReason = (
 
   if (pullRequest.mergeStateStatus === 'BEHIND') {
     return 'out-of-date';
+  }
+
+  if (pullRequest.checksState === 'EXPECTED' || pullRequest.checksState === 'PENDING') {
+    return 'actions-pending';
   }
 
   return null;

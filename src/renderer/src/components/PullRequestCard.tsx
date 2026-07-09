@@ -94,6 +94,10 @@ const getMergeLabel = (pullRequest: PullRequestSummary): string => {
     return 'Out of Date';
   }
 
+  if (approvedBlockedReason === 'actions-pending') {
+    return 'Actions Pending';
+  }
+
   if (!pullRequest.canBeMerged) {
     return 'Blocked';
   }
