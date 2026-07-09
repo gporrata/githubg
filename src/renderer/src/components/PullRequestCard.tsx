@@ -7,7 +7,10 @@ import {
   type PullRequestSummary,
 } from '../../../shared/pullRequest';
 import type { MergeMethod } from '../../../shared/settings';
-import { mergeMethods } from '../../../shared/settings';
+import {
+  MultiStateActionButton,
+  type MultiStateActionButtonOption,
+} from './MultiStateActionButton';
 
 type PullRequestCardProps = {
   highlighted?: boolean;
@@ -106,16 +109,51 @@ const getMergeLabel = (pullRequest: PullRequestSummary): string => {
   return 'Ready';
 };
 
-const mergeMethodLabels = {
-  SQUASH: 'Squash',
-  MERGE: 'Merge',
-  REBASE: 'Rebase',
-} satisfies Record<MergeMethod, string>;
+const mergeMethodOptions = [
+  {
+    value: 'SQUASH',
+    label: 'Squash and merge',
+    shortLabel: 'Squash',
+    actionLabel: 'Squash and merge',
+    description: 'The commits from this branch will be combined into one commit in the base branch.',
+    color: 'var(--accent)',
+  },
+  {
+    value: 'MERGE',
+    label: 'Create a merge commit',
+    shortLabel: 'Merge',
+    actionLabel: 'Create a merge commit',
+    description: 'All commits from this branch will be added to the base branch via a merge commit.',
+    color: '#2f6fed',
+  },
+  {
+    value: 'REBASE',
+    label: 'Rebase and merge',
+    shortLabel: 'Rebase',
+    actionLabel: 'Rebase and merge',
+    description: 'The commits from this branch will be rebased and added to the base branch.',
+    color: '#b45309',
+  },
+] satisfies readonly MultiStateActionButtonOption<MergeMethod>[];
 
-const rerunModeLabels = {
-  failed: 'Failed',
-  all: 'All',
-} satisfies Record<PullRequestRerunMode, string>;
+const rerunModeOptions = [
+  {
+    value: 'failed',
+    label: 'Rerun failed jobs',
+    shortLabel: 'Failed',
+    actionLabel: 'Rerun failed jobs',
+    description: 'Runs only the jobs that failed or were canceled in the workflow run.',
+    color: 'var(--danger)',
+  },
+  {
+    value: 'all',
+    label: 'Rerun all jobs',
+    shortLabel: 'All',
+    actionLabel: 'Rerun all jobs',
+    description: 'Runs every job in the workflow run again, including jobs that already passed.',
+    color: '#2f6fed',
+  },
+] satisfies readonly MultiStateActionButtonOption<PullRequestRerunMode>[];
 
 export const PullRequestCard = ({
   highlighted = false,
@@ -186,16 +224,6 @@ export const PullRequestCard = ({
   const handleMergeMethodChange = (value: MergeMethod): void => {
     setMergeMethod(value);
     void window.githubg.setMergeMethod(pullRequest.id, value);
-  };
-
-  const handleCycleMergeMethod = (): void => {
-    const currentIndex = mergeMethods.indexOf(mergeMethod);
-    const nextMethod = mergeMethods[(currentIndex + 1) % mergeMethods.length];
-    handleMergeMethodChange(nextMethod);
-  };
-
-  const handleCycleRerunMode = (): void => {
-    setRerunMode((mode) => (mode === 'failed' ? 'all' : 'failed'));
   };
 
   const handleMerge = async (): Promise<void> => {
@@ -351,53 +379,41 @@ export const PullRequestCard = ({
               </button>
             ) : null}
             {showMergeControls ? (
-              <div className="multi-action">
-                <button
-                  type="button"
-                  className="merge-button multi-action-main"
-                  disabled={!canMerge}
-                  onClick={handleMerge}
-                >
-                  {isMerging ? 'Merging' : `${mergeMethodLabels[mergeMethod]} Merge`}
-                </button>
-                <button
-                  type="button"
-                  className="multi-action-mode"
-                  aria-label="Change merge method"
-                  disabled={isMerging}
-                  onClick={handleCycleMergeMethod}
-                >
-                  {mergeMethodLabels[mergeMethod]}
-                </button>
-              </div>
+              <MultiStateActionButton
+                ariaLabel="Merge pull request"
+                disabled={!canMerge}
+                loading={isMerging}
+                loadingLabel="Merging"
+                onAction={handleMerge}
+                onValueChange={handleMergeMethodChange}
+                options={mergeMethodOptions}
+                selectionDisabled={isMerging}
+                tone="accent"
+                value={mergeMethod}
+              />
             ) : null}
             {approvedBlockedReason === 'failed-checks' && pullRequest.actionWorkflowRuns.length > 0 ? (
-              <div className="multi-action">
-                <button
-                  type="button"
-                  className="review-request-button multi-action-main"
-                  disabled={!canRerunChecks}
-                  onClick={handleRerunChecks}
-                >
-                  {isRerunning ? (
+              <MultiStateActionButton
+                ariaLabel="Rerun workflow jobs"
+                disabled={!canRerunChecks}
+                leadingIcon={
+                  isRerunning ? (
                     <RefreshCw
                       className="refresh-icon refresh-icon--spinning"
                       size={15}
                       strokeWidth={2.2}
                     />
-                  ) : null}
-                  <span>{isRerunning ? 'Rerunning' : `Rerun ${rerunModeLabels[rerunMode]} Jobs`}</span>
-                </button>
-                <button
-                  type="button"
-                  className="multi-action-mode"
-                  aria-label="Change rerun mode"
-                  disabled={isRerunning}
-                  onClick={handleCycleRerunMode}
-                >
-                  {rerunModeLabels[rerunMode]}
-                </button>
-              </div>
+                  ) : null
+                }
+                loading={isRerunning}
+                loadingLabel="Rerunning"
+                onAction={handleRerunChecks}
+                onValueChange={setRerunMode}
+                options={rerunModeOptions}
+                selectionDisabled={isRerunning}
+                tone="neutral"
+                value={rerunMode}
+              />
             ) : null}
             {approvedBlockedReason === 'out-of-date' ? (
               <button
