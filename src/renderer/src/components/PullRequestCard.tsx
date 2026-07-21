@@ -113,7 +113,6 @@ const mergeMethodOptions = [
   {
     value: 'SQUASH',
     label: 'Squash and merge',
-    shortLabel: 'Squash',
     actionLabel: 'Squash and merge',
     description: 'The commits from this branch will be combined into one commit in the base branch.',
     color: 'var(--accent)',
@@ -121,7 +120,6 @@ const mergeMethodOptions = [
   {
     value: 'MERGE',
     label: 'Create a merge commit',
-    shortLabel: 'Merge',
     actionLabel: 'Create a merge commit',
     description: 'All commits from this branch will be added to the base branch via a merge commit.',
     color: '#2f6fed',
@@ -129,7 +127,6 @@ const mergeMethodOptions = [
   {
     value: 'REBASE',
     label: 'Rebase and merge',
-    shortLabel: 'Rebase',
     actionLabel: 'Rebase and merge',
     description: 'The commits from this branch will be rebased and added to the base branch.',
     color: '#b45309',
@@ -140,7 +137,6 @@ const rerunModeOptions = [
   {
     value: 'failed',
     label: 'Rerun failed jobs',
-    shortLabel: 'Failed',
     actionLabel: 'Rerun failed jobs',
     description: 'Runs only the jobs that failed or were canceled in the workflow run.',
     color: 'var(--danger)',
@@ -148,7 +144,6 @@ const rerunModeOptions = [
   {
     value: 'all',
     label: 'Rerun all jobs',
-    shortLabel: 'All',
     actionLabel: 'Rerun all jobs',
     description: 'Runs every job in the workflow run again, including jobs that already passed.',
     color: '#2f6fed',

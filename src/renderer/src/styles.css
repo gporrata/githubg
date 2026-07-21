@@ -779,7 +779,7 @@ h3 {
 }
 
 .multi-state-action-selector {
-  min-width: 82px;
+  min-width: 41px;
   gap: 5px;
   padding: 0 9px;
   color: var(--text-strong);

@@ -1,4 +1,3 @@
-import { ChevronDown } from 'lucide-react';
 import { type CSSProperties, type ReactNode, useEffect, useId, useRef, useState } from 'react';
 
 export type MultiStateActionButtonTone = 'accent' | 'neutral' | 'danger';
@@ -6,7 +5,6 @@ export type MultiStateActionButtonTone = 'accent' | 'neutral' | 'danger';
 export type MultiStateActionButtonOption<Value extends string> = {
   value: Value;
   label: string;
-  shortLabel: string;
   actionLabel: string;
   description: string;
   color?: string;
@@ -75,7 +73,11 @@ export const MultiStateActionButton = <Value extends string>({
   }
 
   const selectedStyle = selectedOption.color
-    ? ({ '--multi-state-selected-color': selectedOption.color } as CSSProperties)
+    ? ({
+        '--multi-state-main-background': selectedOption.color,
+        '--multi-state-main-border': selectedOption.color,
+        '--multi-state-selected-color': selectedOption.color,
+      } as CSSProperties)
     : undefined;
 
   return (
@@ -103,10 +105,7 @@ export const MultiStateActionButton = <Value extends string>({
         aria-controls={isOpen ? menuId : undefined}
         disabled={selectionDisabled || loading}
         onClick={() => setIsOpen((current) => !current)}
-      >
-        <span>{selectedOption.shortLabel}</span>
-        <ChevronDown size={14} strokeWidth={2.2} />
-      </button>
+      />
       {isOpen ? (
         <div id={menuId} className="multi-state-action-menu" role="menu">
           {options.map((option) => (
