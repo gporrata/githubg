@@ -16,8 +16,8 @@ type TabId = 'open-prs' | 'reviews' | 'jira';
 
 const tabs: Array<{ id: TabId; label: string }> = [
   { id: 'open-prs', label: 'Open PRs' },
-  { id: 'reviews', label: 'Reviews' },
   { id: 'jira', label: 'Jira' },
+  { id: 'reviews', label: 'Reviews' },
 ];
 
 const atlassianApiTokenUrl = 'https://id.atlassian.com/manage-profile/security/api-tokens';
@@ -240,10 +240,10 @@ export const App = (): JSX.Element => {
   }, [pollIntervalMs, refreshPullRequests]);
 
   useEffect(() => {
-    if (activeTab === 'jira' && isJiraConnected && !hasLoadedJiraTickets.current) {
+    if (isJiraConnected && !hasLoadedJiraTickets.current) {
       void refreshJiraTickets();
     }
-  }, [activeTab, isJiraConnected, refreshJiraTickets]);
+  }, [isJiraConnected, refreshJiraTickets]);
 
   useEffect(() => {
     if (!hasLoadedJiraCredentials.current) {
