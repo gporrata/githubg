@@ -22,6 +22,10 @@ type JiraTenantInfoResponse = {
 type JiraField = {
   id: string;
   name: string;
+  schema?: {
+    custom?: string;
+    type?: string;
+  };
 };
 
 type JiraIssueSearchResponse = {
@@ -220,10 +224,24 @@ export const disconnectJira = (): JiraAuthState => {
   return getJiraAuthState();
 };
 
+const normalizeFieldName = (name: string): string => name.trim().replace(/\s+/g, ' ').toLowerCase();
+
 const findFieldId = (fields: JiraField[], names: string[]): string | null => {
-  const normalizedNames = new Set(names.map((name) => name.toLowerCase()));
-  return fields.find((field) => normalizedNames.has(field.name.toLowerCase()))?.id ?? null;
+  const normalizedNames = new Set(names.map(normalizeFieldName));
+  return fields.find((field) => normalizedNames.has(normalizeFieldName(field.name)))?.id ?? null;
 };
+
+const findPointsFieldIds = (fields: JiraField[]): string[] =>
+  fields
+    .filter((field) => {
+      const normalizedName = normalizeFieldName(field.name);
+      return (
+        normalizedName === 'story points' ||
+        /^story points? estimate$/.test(normalizedName) ||
+        (normalizedName.includes('story point') && field.schema?.custom?.includes('float'))
+      );
+    })
+    .map((field) => field.id);
 
 const extractDocumentText = (value: unknown): string => {
   if (typeof value === 'string') {
@@ -245,8 +263,37 @@ const extractDocumentText = (value: unknown): string => {
   return '';
 };
 
-const extractPoints = (value: unknown): number | null =>
-  typeof value === 'number' && Number.isFinite(value) ? value : null;
+const extractPoints = (value: unknown): number | null => {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? value : null;
+  }
+
+  if (typeof value === 'string' && value.trim()) {
+    const parsedValue = Number(value);
+    return Number.isFinite(parsedValue) ? parsedValue : null;
+  }
+
+  if (value && typeof value === 'object' && 'value' in value) {
+    return extractPoints(value.value);
+  }
+
+  return null;
+};
+
+const extractPointsFromFields = (
+  fields: JiraIssue['fields'],
+  fieldIds: string[],
+): number | null => {
+  for (const fieldId of fieldIds) {
+    const points = extractPoints(fields[fieldId]);
+
+    if (points !== null) {
+      return points;
+    }
+  }
+
+  return null;
+};
 
 const extractStringProperty = (
   value: unknown,
@@ -414,7 +461,7 @@ const mapIssue = (
   issue: JiraIssue,
   siteUrl: string,
   sprintFieldId: string | null,
-  pointsFieldId: string | null,
+  pointsFieldIds: string[],
 ): JiraMappedIssue => {
   const sprints = sprintFieldId ? extractSprintSummaries(issue.fields[sprintFieldId]) : [];
 
@@ -431,7 +478,7 @@ const mapIssue = (
     sprint: extractSprint(sprints),
     sprints,
     hasActiveSprint: hasActiveSprint(sprints),
-    points: pointsFieldId ? extractPoints(issue.fields[pointsFieldId]) : null,
+    points: extractPointsFromFields(issue.fields, pointsFieldIds),
     openPullRequests: [],
   };
 };
@@ -472,16 +519,14 @@ export const fetchJiraTickets = async (): Promise<JiraTicketSummary[]> => {
   const credentials = getRequiredJiraCredentials();
   const fields = await jiraRequest<JiraField[]>(credentials, '/rest/api/3/field');
   const sprintFieldId = findFieldId(fields, ['Sprint']);
-  const pointsFieldId = findFieldId(fields, ['Story Points', 'Story point estimate']);
+  const pointsFieldIds = findPointsFieldIds(fields);
   const requestedFields = ['summary', 'description', 'status'];
 
   if (sprintFieldId) {
     requestedFields.push(sprintFieldId);
   }
 
-  if (pointsFieldId) {
-    requestedFields.push(pointsFieldId);
-  }
+  requestedFields.push(...pointsFieldIds);
 
   const response = await jiraRequest<JiraIssueSearchResponse>(
     credentials,
@@ -499,7 +544,7 @@ export const fetchJiraTickets = async (): Promise<JiraTicketSummary[]> => {
   );
 
   const mappedIssues = response.issues.map((issue) =>
-    mapIssue(issue, credentials.siteUrl, sprintFieldId, pointsFieldId),
+    mapIssue(issue, credentials.siteUrl, sprintFieldId, pointsFieldIds),
   );
   const currentSprintName = selectCurrentSprintName(mappedIssues);
 
