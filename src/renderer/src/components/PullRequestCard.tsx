@@ -60,7 +60,7 @@ const getReviewLabel = (pullRequest: PullRequestSummary): string => {
   }
 
   if (hasAddressedRequestedChanges(pullRequest)) {
-    return 'Changes addressed / Review Pending';
+    return 'Review Pending / Changes addressed';
   }
 
   if (pullRequest.reviewDecision === 'CHANGES_REQUESTED') {
