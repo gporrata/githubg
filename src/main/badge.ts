@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import {
   getApprovedPullRequestBlockedReason,
   hasPullRequestConflicts,
+  hasUnaddressedRequestedChanges,
   type PullRequestSummary,
 } from '../shared/pullRequest';
 
@@ -15,18 +16,6 @@ const iconFilenames = {
   grey: 'icon-grey.png',
   white: 'icon-white.png',
 } satisfies Record<AppIconColor, string>;
-
-const hasUnaddressedRequestedChanges = (pullRequest: PullRequestSummary): boolean => {
-  if (pullRequest.reviewDecision !== 'CHANGES_REQUESTED') {
-    return false;
-  }
-
-  const activeThreads = pullRequest.commentThreads.filter(
-    (thread) => !thread.isResolved && !thread.isOutdated,
-  );
-
-  return activeThreads.length > 0 || pullRequest.commentThreads.length === 0;
-};
 
 const getIconColor = (pullRequests: PullRequestSummary[]): AppIconColor => {
   if (

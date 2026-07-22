@@ -2,7 +2,9 @@ import { ChevronDown, ChevronRight, ExternalLink, RefreshCw } from 'lucide-react
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   getApprovedPullRequestBlockedReason,
+  hasAddressedRequestedChanges,
   hasPullRequestConflicts,
+  hasUnaddressedRequestedChanges,
   type PullRequestRerunMode,
   type PullRequestSummary,
 } from '../../../shared/pullRequest';
@@ -57,23 +59,15 @@ const getReviewLabel = (pullRequest: PullRequestSummary): string => {
     return 'Approved';
   }
 
+  if (hasAddressedRequestedChanges(pullRequest)) {
+    return 'Changes addressed / Review Pending';
+  }
+
   if (pullRequest.reviewDecision === 'CHANGES_REQUESTED') {
     return 'Changes requested';
   }
 
   return 'Review pending';
-};
-
-const hasUnaddressedRequestedChanges = (pullRequest: PullRequestSummary): boolean => {
-  if (pullRequest.reviewDecision !== 'CHANGES_REQUESTED') {
-    return false;
-  }
-
-  const activeThreads = pullRequest.commentThreads.filter(
-    (thread) => !thread.isResolved && !thread.isOutdated,
-  );
-
-  return activeThreads.length > 0 || pullRequest.commentThreads.length === 0;
 };
 
 const getMergeLabel = (pullRequest: PullRequestSummary): string => {
@@ -247,6 +241,7 @@ export const PullRequestCard = ({
         pullRequest.id,
         requestedChangeReviewers.map((reviewer) => reviewer.id),
       );
+      await onPullRequestChanged?.();
     } catch (error) {
       setReviewRequestError(error instanceof Error ? error.message : 'Review request failed.');
     } finally {

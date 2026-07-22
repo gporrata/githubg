@@ -68,8 +68,31 @@ export type PullRequestSummary = {
   isDraft: boolean;
   actionWorkflowRuns: PullRequestActionRun[];
   requestedChangeReviewers: PullRequestReviewer[];
+  hasPendingReviewRequest: boolean;
+  reviewThreadCount: number;
   commentThreads: PullRequestCommentThread[];
 };
+
+export const hasUnaddressedRequestedChanges = (pullRequest: PullRequestSummary): boolean => {
+  if (pullRequest.reviewDecision !== 'CHANGES_REQUESTED') {
+    return false;
+  }
+
+  const activeThreads = pullRequest.commentThreads.filter(
+    (thread) => !thread.isResolved && !thread.isOutdated,
+  );
+
+  return (
+    activeThreads.length > 0 ||
+    pullRequest.commentThreads.length === 0 ||
+    pullRequest.commentThreads.length < pullRequest.reviewThreadCount
+  );
+};
+
+export const hasAddressedRequestedChanges = (pullRequest: PullRequestSummary): boolean =>
+  pullRequest.reviewDecision === 'CHANGES_REQUESTED' &&
+  !hasUnaddressedRequestedChanges(pullRequest) &&
+  pullRequest.hasPendingReviewRequest;
 
 export type PullRequestRerunMode = 'failed' | 'all';
 

@@ -225,6 +225,8 @@ const mapPullRequest = (node: GithubPullRequestNode, hasActiveActions = false): 
     isDraft: node.isDraft,
     actionWorkflowRuns: getFailedActionWorkflowRuns(node),
     requestedChangeReviewers,
+    hasPendingReviewRequest: node.reviewRequests.totalCount > 0,
+    reviewThreadCount: node.reviewThreads.totalCount,
     commentThreads: node.reviewThreads.nodes
       .filter((thread) => thread !== null)
       .map((thread) => ({

@@ -70,6 +70,9 @@ export type GithubPullRequestNode = {
       } | null;
     } | null>;
   };
+  reviewRequests: {
+    totalCount: number;
+  };
   reviewThreads: {
     totalCount: number;
     nodes: Array<{
@@ -168,7 +171,10 @@ const PULL_REQUEST_FIELDS = `
         }
       }
     }
-    reviewThreads(first: 25) {
+    reviewRequests(first: 1) {
+      totalCount
+    }
+    reviewThreads(first: 100) {
       totalCount
       nodes {
         id
