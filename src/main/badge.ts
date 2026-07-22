@@ -6,12 +6,13 @@ import {
   type PullRequestSummary,
 } from '../shared/pullRequest';
 
-type AppIconColor = 'red' | 'green' | 'light-blue' | 'white';
+type AppIconColor = 'red' | 'green' | 'light-blue' | 'grey' | 'white';
 
 const iconFilenames = {
   red: 'icon-red.png',
   green: 'icon-green.png',
   'light-blue': 'icon-light-blue.png',
+  grey: 'icon-grey.png',
   white: 'icon-white.png',
 } satisfies Record<AppIconColor, string>;
 
@@ -57,6 +58,10 @@ const getIconColor = (pullRequests: PullRequestSummary[]): AppIconColor => {
     )
   ) {
     return 'light-blue';
+  }
+
+  if (pullRequests.length > 0) {
+    return 'grey';
   }
 
   return 'white';

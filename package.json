@@ -44,6 +44,10 @@
       {
         "from": "resources/icon-light-blue.png",
         "to": "icon-light-blue.png"
+      },
+      {
+        "from": "resources/icon-grey.png",
+        "to": "icon-grey.png"
       }
     ],
     "mac": {
