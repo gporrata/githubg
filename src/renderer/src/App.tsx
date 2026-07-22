@@ -1,4 +1,4 @@
-import { Plus, RefreshCw, Settings } from 'lucide-react';
+import { Plus, RefreshCw, Settings, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   JiraAuthState,
@@ -691,10 +691,12 @@ export const App = (): JSX.Element => {
               <h2 id="settings-title">Settings</h2>
               <button
                 type="button"
-                className="text-button"
+                className="icon-button"
+                title="Close settings"
+                aria-label="Close settings"
                 onClick={() => setIsSettingsModalOpen(false)}
               >
-                Close
+                <X size={18} strokeWidth={2.2} />
               </button>
             </header>
 
