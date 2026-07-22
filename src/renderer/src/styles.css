@@ -538,6 +538,10 @@ h2 {
   border-left-color: #60a5fa;
 }
 
+.pr-card--draft {
+  border-left-color: #a6a6a6;
+}
+
 .pr-card--highlighted {
   border-color: var(--accent);
   box-shadow:

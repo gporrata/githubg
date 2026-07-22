@@ -551,6 +551,7 @@ export const App = (): JSX.Element => {
                 <div className="pr-list">
                   {activePullRequests.map((pullRequest) => (
                     <PullRequestCard
+                      draftBorder={activeTab === 'open-prs' && pullRequest.isDraft}
                       key={pullRequest.id}
                       highlighted={highlightedPullRequestId === pullRequest.id}
                       onPullRequestChanged={refreshPullRequests}

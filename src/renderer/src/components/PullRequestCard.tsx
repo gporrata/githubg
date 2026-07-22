@@ -13,6 +13,7 @@ import {
 } from './MultiStateActionButton';
 
 type PullRequestCardProps = {
+  draftBorder?: boolean;
   highlighted?: boolean;
   onPullRequestChanged?: () => Promise<void>;
   pullRequest: PullRequestSummary;
@@ -151,6 +152,7 @@ const rerunModeOptions = [
 ] satisfies readonly MultiStateActionButtonOption<PullRequestRerunMode>[];
 
 export const PullRequestCard = ({
+  draftBorder = false,
   highlighted = false,
   onPullRequestChanged,
   pullRequest,
@@ -287,9 +289,9 @@ export const PullRequestCard = ({
   return (
     <article
       ref={cardRef}
-      className={`pr-card pr-card--${tone}${hasRunningAction ? ' pr-card--action-running' : ''}${
-        highlighted ? ' pr-card--highlighted' : ''
-      }`}
+      className={`pr-card pr-card--${tone}${draftBorder ? ' pr-card--draft' : ''}${
+        hasRunningAction ? ' pr-card--action-running' : ''
+      }${highlighted ? ' pr-card--highlighted' : ''}`}
     >
       <header className="pr-card-header">
         <button
