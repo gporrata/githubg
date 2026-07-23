@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import {
   getApprovedPullRequestBlockedReason,
   hasAddressedRequestedChanges,
+  hasCommentedPendingReview,
   hasPullRequestConflicts,
   hasUnaddressedRequestedChanges,
   type PullRequestSummary,
@@ -34,7 +35,12 @@ const getIconColor = (pullRequests: PullRequestSummary[]): AppIconColor => {
     return 'red';
   }
 
-  if (pullRequests.some(hasUnaddressedRequestedChanges)) {
+  if (
+    pullRequests.some(
+      (pullRequest) =>
+        hasUnaddressedRequestedChanges(pullRequest) || hasCommentedPendingReview(pullRequest),
+    )
+  ) {
     return 'red';
   }
 

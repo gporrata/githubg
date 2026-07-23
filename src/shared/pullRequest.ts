@@ -73,6 +73,10 @@ export type PullRequestSummary = {
   commentThreads: PullRequestCommentThread[];
 };
 
+export const hasCommentedPendingReview = (pullRequest: PullRequestSummary): boolean =>
+  pullRequest.commentCount > 0 &&
+  (pullRequest.reviewDecision === 'REVIEW_REQUIRED' || pullRequest.reviewDecision === null);
+
 export const hasUnaddressedRequestedChanges = (pullRequest: PullRequestSummary): boolean => {
   if (pullRequest.reviewDecision !== 'CHANGES_REQUESTED') {
     return false;

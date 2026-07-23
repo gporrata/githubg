@@ -2,6 +2,7 @@ import { ChevronDown, ChevronRight, ExternalLink, RefreshCw } from 'lucide-react
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   getApprovedPullRequestBlockedReason,
+  hasCommentedPendingReview,
   hasAddressedRequestedChanges,
   hasPullRequestConflicts,
   hasUnaddressedRequestedChanges,
@@ -43,7 +44,7 @@ const getCardTone = (pullRequest: PullRequestSummary): string => {
     return 'blocked';
   }
 
-  if (hasUnaddressedRequestedChanges(pullRequest)) {
+  if (hasUnaddressedRequestedChanges(pullRequest) || hasCommentedPendingReview(pullRequest)) {
     return 'changes-requested';
   }
 
@@ -65,6 +66,10 @@ const getReviewLabel = (pullRequest: PullRequestSummary): string => {
 
   if (pullRequest.reviewDecision === 'CHANGES_REQUESTED') {
     return 'Changes requested';
+  }
+
+  if (hasCommentedPendingReview(pullRequest)) {
+    return 'Commented';
   }
 
   return 'Review pending';
