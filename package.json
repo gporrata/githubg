@@ -46,6 +46,10 @@
         "to": "icon-light-blue.png"
       },
       {
+        "from": "resources/icon-yellow.png",
+        "to": "icon-yellow.png"
+      },
+      {
         "from": "resources/icon-grey.png",
         "to": "icon-grey.png"
       }
